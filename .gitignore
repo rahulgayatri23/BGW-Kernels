@@ -1,0 +1,12 @@
+#Optrpt files #
+###############
+*.optrpt
+
+#Objext files #
+###############
+*.o
+
+#Exec files #
+###############
+*.ex
+
