@@ -1,27 +1,23 @@
-EXE = gppKer_GPUComplexTarget.ex
-SRC1 = gppKer_GPUComplexGCCTarget.cpp 
-#SRC1 = gppKer_GPUComplexXLCTarget.cpp 
-SRC2 = GPUComplex_target.cpp
+EXE = gppKer_gpuComplexXLCTarget.ex
+SRC = gppKer_gpuComplexXLCTarget.cpp 
+#EXE = gppKer_gpuComplexGCCTarget.ex
+#SRC = gppKer_gpuComplexGCCTarget.cpp 
 
-#CXX = xlc++
+CXX = xlc++
+#CXX = CC 
 #CXX = g++
-CXX = CC
+#CXX = clang++
 
 LINK = ${CXX}
 
-ifeq ($(CXX),CC)
-	CXXFLAGS=-O3 -qopenmp -qopt-report=5 -std=c++11
-	CXXFLAGS+=-xCORE_AVX2
-#	CXXFLAGS+=-xMIC_AVX512
-	LINKFLAGS=-qopenmp
-endif 
-
 ifeq ($(CXX),g++)
 	CXXFLAGS= -g -O3 -std=c++11 -fopenmp -foffload="-lm" -foffload=nvptx-none
-	LINKFLAGS=-fopenmp
+	LINKFLAGS=-fopenmp -foffload="-lm" -foffload=nvptx-none
 endif 
 
 ifeq ($(CXX),xlc++)
+#	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp
+#	LINKFLAGS=-qsmp 
 	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp=noauto:omp -qoffload #-Xptxas -v
 	LINKFLAGS=-qsmp=noauto:omp -qoffload 
 endif 
@@ -31,18 +27,20 @@ ifeq ($(CXX),clang++)
 	LINKFLAGS=-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${CUDA_HOME}
 endif 
 
-OBJ1 = $(SRC1:.cpp=.o)
-OBJ2 = $(SRC2:.cpp=.o)
+ifeq ($(CXX),icc)
+	CXXFLAGS=-O3 -qopenmp -qopt-report=5 -g
+	CXXFLAGS+=-xCORE_AVX2
+#	CXXFLAGS+=-xMIC_AVX512
+	LINKFLAGS=-qopenmp -dynamic
+endif 
 
-$(EXE): $(OBJ1) $(OBJ2) 
-	$(CXX) $(OBJ1) $(OBJ2) -o $(EXE) $(LINKFLAGS)
+OBJ1 = $(SRC:.cpp=.o)
 
-$(OBJ1): $(SRC1) 
-	$(CXX) -c $(SRC1) $(CXXFLAGS)
+$(EXE): $(OBJ1)  
+	$(CXX) $(OBJ1) -o $(EXE) $(LINKFLAGS)
 
-$(OBJ2): $(SRC2) 
-	$(CXX) -c $(SRC2) $(CXXFLAGS)
+$(OBJ1): $(SRC) 
+	$(CXX) -c $(SRC) $(CXXFLAGS)
 
 clean: 
-	rm -f $(OBJ1) $(OBJ2) $(EXE)
-
+	rm -f $(OBJ1) $(EXE)
