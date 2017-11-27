@@ -1,12 +1,12 @@
 EXE = gppKerFort.ex
-SRC = gppKernel_fort.f90
+SRC = gppKernel.f90
 
 CXX = ftn
 LINK = ${CXX}
 
 CXXFLAGS = -O3 -qopt-report=5 -g -qopenmp 
-#CXXFLAGS+=-xCORE_AVX2 
-CXXFLAGS+=-xMIC_AVX512 
+CXXFLAGS+=-xCORE-AVX2 
+#CXXFLAGS+=-xMIC-AVX512 
 LINKFLAGS = -dynamic -O3 -qopenmp
 
 OBJ = $(SRC:.f90=.o)

@@ -403,7 +403,7 @@ int main(int argc, char** argv)
 
                             scha = mygpvar1 * (*aqsntemp)[n1][ig] * delw * (*I_eps_array)[my_igp][ig];
 
-                            if ((wdiffr > limittwo) && (delwr < limitone))
+//                            if ((wdiffr > limittwo) && (delwr < limitone))
                                 scht += scha;
                         
                        }
