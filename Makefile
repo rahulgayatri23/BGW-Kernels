@@ -17,13 +17,13 @@ ifeq ($(CXX),CC)
 endif 
 
 ifeq ($(CXX),g++)
-	CXXFLAGS= -g -O3 -std=c++11 -fopenmp -foffload="-lm" -foffload=nvptx-none
+	CXXFLAGS= -g -O3 -std=c++11 -fopenmp 
 	LINKFLAGS=-fopenmp
 endif 
 
 ifeq ($(CXX),xlc++)
-	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp=noauto:omp -qoffload #-Xptxas -v
-	LINKFLAGS=-qsmp=noauto:omp -qoffload 
+	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp
+	LINKFLAGS=-qsmp
 endif 
 
 ifeq ($(CXX),clang++)
