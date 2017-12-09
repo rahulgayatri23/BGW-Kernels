@@ -9,7 +9,6 @@
 #include <ctime>
 #include <chrono>
 
-//#include "Complex_target.cpp"
 #include "GPUComplex.h"
 
 using namespace std;
@@ -344,6 +343,9 @@ int main(int argc, char** argv)
    }
 
     auto start_chrono = std::chrono::high_resolution_clock::now();
+    double achtemp_re0 = 0.00, achtemp_re1 = 0.00, achtemp_re2 = 0.00, \
+        achtemp_im0 = 0.00, achtemp_im1 = 0.00, achtemp_im2 = 0.00;
+
 
 #pragma omp target enter data map(alloc:ssx_array[nstart:nend], acht_n1_loc[0:number_bands], aqsmtemp[0:number_bands*ncouls],aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wtilde_array[0:ngpown*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], asxtemp[0:(nend-nstart)], achtemp_re[nstart:nend], achtemp_im[nstart:nend])
 
@@ -371,7 +373,8 @@ int main(int argc, char** argv)
     for(int n1 = 0; n1<number_bands; ++n1) // This for loop at the end cheddam
         reduce_achstemp(n1, number_bands, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, indinv, ngpown, vcoul);
 
-#pragma omp target teams distribute parallel for schedule(static) collapse(2)
+#pragma omp target teams distribute parallel for schedule(static) collapse(2) map(tofrom:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2) \
+    reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
@@ -379,10 +382,11 @@ int main(int argc, char** argv)
             int indigp = inv_igp_index[my_igp];
             int igp = indinv[indigp];
 
-            double achtemp_re_loc[3], \
-                achtemp_im_loc[3];
+            GPUComplex wdiff, delw;
 
-            for(int iw=nstart; iw<nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+            double achtemp_re_loc[3], achtemp_im_loc[3];
+
+            for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
 #pragma omp simd 
             for(int iw = nstart; iw < nend; ++iw)
@@ -395,24 +399,30 @@ int main(int argc, char** argv)
                 }
             }
 
-           for(int iw = nstart; iw < nend; ++iw)
-           {
-#pragma omp atomic
-                achtemp_re[iw] += achtemp_re_loc[iw];
-#pragma omp atomic
-                achtemp_im[iw] += achtemp_im_loc[iw];
-           }
-
+            achtemp_re0 += achtemp_re_loc[0];
+            achtemp_re1 += achtemp_re_loc[1];
+            achtemp_re2 += achtemp_re_loc[2];
+            achtemp_im0 += achtemp_im_loc[0];
+            achtemp_im1 += achtemp_im_loc[1];
+            achtemp_im2 += achtemp_im_loc[2];
         } //ngpown
     } // number-bands
 
     std::chrono::duration<double> elapsed_chrono = std::chrono::high_resolution_clock::now() - start_chrono;
 
-#pragma omp target update from (acht_n1_loc[0:number_bands], asxtemp[0:(nend-nstart)], achtemp_re[nstart:nend], achtemp_im[nstart:nend] )
+//#pragma omp target update from (acht_n1_loc[0:number_bands], asxtemp[0:(nend-nstart)], achtemp_re[nstart:nend], achtemp_im[nstart:nend] )
 
 #pragma omp target exit data map(delete: acht_n1_loc[:0], aqsmtemp[:0],aqsntemp[:0], I_eps_array[:0], wtilde_array[:0], vcoul[:0], inv_igp_index[:0], indinv[:0], asxtemp[:0])
 
     std::chrono::duration<double> elapsed_chrono_withDataMovement = std::chrono::high_resolution_clock::now() - start_chrono_withDataMovement;
+
+    achtemp_re[0] = achtemp_re0;
+    achtemp_re[1] = achtemp_re1;
+    achtemp_re[2] = achtemp_re2;
+    achtemp_im[0] = achtemp_im0;
+    achtemp_im[1] = achtemp_im1;
+    achtemp_im[2] = achtemp_im2;
+
 
     printf(" \n Final achstemp\n");
     achstemp.print();

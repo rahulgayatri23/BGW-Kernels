@@ -11,7 +11,7 @@
 //#include <cuComplex.h>
 //#include <cuda.h>
 //#include <cuda_runtime_api.h>
-#include "cuComplex.h"
+#include "cudaComplex.h"
 
 using namespace std;
 int debug = 0;

@@ -20,10 +20,10 @@
 inline const cuDoubleComplex cuDoubleComplex_square(cuDoubleComplex& src) {
     return make_cuDoubleComplex(src.x*src.x - src.y*src.y, 2*src.x*src.y);
 }
-//
-///*
-// * Return the conjugate of a complex number 
-// */
+
+/*
+Return the conjugate of a complex number 
+*/
 inline cuDoubleComplex cuDoubleComplex_conj(cuDoubleComplex& src) {
 return make_cuDoubleComplex(src.x, -src.y);
 }

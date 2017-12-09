@@ -1,18 +1,23 @@
-EXE = gppKer_gpuComplexXLCTarget.ex
-SRC = gppKer_gpuComplexXLCTarget.cpp
-#EXE = gppKer_gpuComplexGCCTarget.ex
-#SRC = gppKer_gpuComplexGCCTarget.cpp
+EXE = gppKer_cuComplex.ex
+SRC1 = gppKer_cuComplex.cpp 
+SRC2 = cudaComplex.cu
 
 #CXX = xlc++
-CXX = CC 
+#CXX = CC 
 #CXX = g++
 #CXX = clang++
+CXX = nvcc
 
 LINK = ${CXX}
 
+ifeq ($(CXX),nvcc)
+	CXXFLAGS= -g -O3 -std=c++11 -Wno-deprecated-gpu-targets -arch=sm_60
+	LINKFLAGS=-Wno-deprecated-gpu-targets
+endif 
+
 ifeq ($(CXX),g++)
 	CXXFLAGS= -g -O3 -std=c++11 -fopenmp -foffload="-lm" -foffload=nvptx-none
-	LINKFLAGS=-fopenmp -foffload="-lm" -foffload=nvptx-none
+	LINKFLAGS=-fopenmp
 endif 
 
 ifeq ($(CXX),xlc++)
@@ -28,20 +33,24 @@ ifeq ($(CXX),clang++)
 endif 
 
 ifeq ($(CXX),icc)
-	CXXFLAGS=-O3 -qopenmp -qopt-report=5 -g
-	CXXFLAGS+=-xCORE_AVX2
+	CXXFLAGS=-O3 -qopenmp -qopt-report=5
+	CXXFLAGS+=xCORE_AVX2
 #	CXXFLAGS+=-xMIC_AVX512
-	LINKFLAGS=-qopenmp -dynamic
+	LINKFLAGS=-qopenmp
 endif 
 
-OBJ = $(SRC:.cpp=.o)
+OBJ1 = $(SRC1:.cpp=.o)
+OBJ2 = $(SRC2:.cu=.o)
 
-$(EXE): $(OBJ)  
-	$(CXX) $(OBJ) -o $(EXE) $(LINKFLAGS)
+$(EXE): $(OBJ1) $(OBJ2) 
+	$(CXX) $(OBJ1) $(OBJ2) -o $(EXE) $(LINKFLAGS)
 
-$(OBJ1): $(SRC) 
-	$(CXX) -c $(SRC) $(CXXFLAGS)
+$(OBJ1): $(SRC1) 
+	$(CXX) -c $(SRC1) $(CXXFLAGS)
+
+$(OBJ2): $(SRC2) 
+	$(CXX) -c $(SRC2) $(CXXFLAGS)
 
 clean: 
-	rm -f $(OBJ) $(EXE)
+	rm -f $(OBJ1) $(OBJ2) $(EXE)
 
