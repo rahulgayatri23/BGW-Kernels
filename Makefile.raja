@@ -1,0 +1,54 @@
+EXE = gppKer_gpuComplexRaja.ex
+SRC = gppKer_gpuComplexRaja.cpp 
+
+
+RAJA_LOCATION=/global/homes/r/rgayatri/RAJA/_build_intel
+
+#CXX = xlc++
+CXX = CC 
+#CXX = g++
+#CXX = clang++
+
+LINK = ${CXX}
+
+ifeq ($(CXX),CC)
+	CXXFLAGS=-O3 -qopenmp -qopt-report=5
+	CXXFLAGS+=-xCORE_AVX2
+	CXXFLAGS+=-I $(RAJA_LOCATION)/include
+#	CXXFLAGS+=-xMIC_AVX512
+	LINKFLAGS=-qopenmp -L $(RAJA_LOCATION)/lib -lRAJA
+endif 
+
+	CXXFLAGS=-O3 -qopenmp -std=c++11 -qopt-report=5
+	CXXFLAGS+=-xCORE-AVX2
+#	CXXFLAGS+=-xMIC-AVX512
+	CXXFLAGS+=-I /global/homes/r/rgayatri/RAJA/include -I $(RAJA_LOCATION)/include
+	LINKFLAGS=-qopenmp -std=c++11 -L $(RAJA_LOCATION)/src -lRAJA
+
+ifeq ($(CXX),g++)
+	CXXFLAGS= -g -O3 -std=c++11 -fopenmp  -ffast-math -funroll-loops -ftree-vectorizer-verbose=2 
+	LINKFLAGS=-fopenmp
+endif 
+
+ifeq ($(CXX),xlc++)
+	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp
+	LINKFLAGS=-qsmp
+endif 
+
+ifeq ($(CXX),clang++)
+	CXXFLAGS=-O3 -std=gnu++11 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${CUDA_HOME}
+	LINKFLAGS=-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${CUDA_HOME}
+endif 
+
+
+OBJ = $(SRC:.cpp=.o)
+
+$(EXE): $(OBJ) 
+	$(CXX) $(OBJ) -o $(EXE) $(LINKFLAGS)
+
+$(OBJ1): $(SRC) 
+	$(CXX) -c $(SRC) $(CXXFLAGS)
+
+clean: 
+	rm -f $(OBJ) $(EXE)
+
