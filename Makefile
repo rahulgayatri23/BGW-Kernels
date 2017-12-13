@@ -1,44 +1,56 @@
-EXE = gppKer.ex
-SRC = gppKer.cpp 
-#EXE = gppKer_gpuComplex.ex
-#SRC = gppKer_gpuComplex.cpp 
+KOKKOS_PATH = ${HOME}/Kokkos/kokkos
+#KOKKOS_DEVICES = "OpenMP"
+EXE_NAME = "gppKerKokkosOpenMP"
 
-#CXX = xlc++
-#CXX = g++
-CXX = CC
+SRC = gppKerKokkosOpenMP.cpp
+CXX=CC
 
-LINK = ${CXX}
+default: build
+	echo "Start Build"
 
 ifeq ($(CXX),CC)
-	CXXFLAGS= -g -O3 -qopenmp -qopt-report=5 -std=c++11
+	CXXFLAGS=-O3 #-std=c++11
 	#CXXFLAGS+=-xCORE_AVX2
-	CXXFLAGS+=-xMIC-AVX512
-	LINKFLAGS=-qopenmp -dynamic
+	CXXFLAGS+=-xMIC_AVX512
+#	LINKFLAGS=-qopenmp -dynamic
+    EXE = ${EXE_NAME}.host
+    KOKKOS_ARCH = "knl"
 endif 
 
-ifeq ($(CXX),g++)
-	CXXFLAGS= -g -O3 -std=c++11 -fopenmp 
-	LINKFLAGS=-fopenmp
-endif 
+#ifneq (,$(findstring Cuda,$(KOKKOS_DEVICES)))
+#CXX = ${KOKKOS_PATH}/config/nvcc_wrapper
+#EXE = ${EXE_NAME}.cuda
+#KOKKOS_ARCH = "SNB,Kepler30"
+#KOKKOS_CUDA_OPTIONS = "enable_lambda"
+#else
+#CXX =CC
+#EXE = ${EXE_NAME}.host
+#KOKKOS_ARCH = "knl"
+#endif
 
-ifeq ($(CXX),xlc++)
-	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp
-	LINKFLAGS=-qsmp
-endif 
+#CXXFLAGS = -O3 -xCORE_AVX2 -qopt-report=5 
+LINK = ${CXX}
+LINKFLAGS = 
 
-ifeq ($(CXX),clang++)
-	CXXFLAGS=-O3 -std=gnu++11 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${CUDA_HOME}
-	LINKFLAGS=-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${CUDA_HOME}
-endif 
+DEPFLAGS = -M
 
 OBJ = $(SRC:.cpp=.o)
+LIB =
 
-$(EXE): $(OBJ)  
-	$(CXX) $(OBJ) -o $(EXE) $(LINKFLAGS)
+include $(KOKKOS_PATH)/Makefile.kokkos
 
-$(OBJ1): $(SRC) 
-	$(CXX) -c $(SRC) $(CXXFLAGS)
+build: $(EXE)
 
-clean: 
-	rm -f $(OBJ) $(EXE)
+$(EXE): $(OBJ) $(KOKKOS_LINK_DEPENDS)
+	$(LINK) $(KOKKOS_LDFLAGS) $(LINKFLAGS) $(EXTRA_PATH) $(OBJ) $(KOKKOS_LIBS) $(LIB) -o $(EXE)
 
+clean: kokkos-clean
+	rm -f *.o *.cuda *.host
+
+# Compilation rules
+
+%.o:%.cpp $(KOKKOS_CPP_DEPENDS)
+	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) $(EXTRA_INC) -c $<
+
+test: $(EXE)
+	./$(EXE)

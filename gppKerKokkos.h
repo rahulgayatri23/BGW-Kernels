@@ -8,7 +8,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Complex.hpp>
-#include "GPUComplex.h"
+#include "Complex.h"
 using namespace std;
 
 

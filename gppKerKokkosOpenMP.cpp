@@ -10,7 +10,7 @@
 #include <chrono>
 #include "gppKerKokkos.h"
 
-#include "GPUComplex.h"
+#include "Complex.h"
 
 using namespace std;
 int debug = 0;

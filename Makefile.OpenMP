@@ -3,9 +3,9 @@ KOKKOS_DEVICES = "OpenMP"
 EXE_NAME = "gppKerKokkosOpenMP"
 
 SRC = gppKerKokkosOpenMP.cpp
-#CXX=CC
+CXX=CC
 #CXX=g++
-CXX=xlc++
+#CXX=xlc++
 
 default: build
 	echo "Start Build"
