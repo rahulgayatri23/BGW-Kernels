@@ -8,40 +8,44 @@
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Complex.hpp>
-#include "Complex.h"
 using namespace std;
 
 
-#define CUDASPACE 0
-#define OPENMPSPACE 1
+#define CUDASPACE 1
+#define OPENMPSPACE 0
 #define CUDAUVM 0
 #define SERIAL 0
 #define THREADS 0
 
 #if OPENMPSPACE
+#include "Complex.h"
         typedef Kokkos::OpenMP   ExecSpace;
         typedef Kokkos::OpenMP        MemSpace;
         typedef Kokkos::LayoutRight  Layout;
 #endif
 
 #if CUDASPACE
+#include "GPUComplex.h"
         typedef Kokkos::Cuda     ExecSpace;
         typedef Kokkos::CudaSpace     MemSpace;
         typedef Kokkos::LayoutLeft   Layout;
 #endif
 
 #if CUDAUVM
+#include "GPUComplex.h"
         typedef Kokkos::Cuda     ExecSpace;
         typedef Kokkos::CudaUVMSpace  MemSpace;
         typedef Kokkos::LayoutLeft   Layout;
 #endif
 
 #if SERIAL
+#include "Complex.h"
         typedef Kokkos::Serial   ExecSpace;
         typedef Kokkos::HostSpace     MemSpace;
 #endif
 
 #if THREADS
+#include "Complex.h"
         typedef Kokkos::Threads  ExecSpace;
         typedef Kokkos::HostSpace     MemSpace;
 #endif
