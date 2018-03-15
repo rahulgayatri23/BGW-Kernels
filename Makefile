@@ -3,6 +3,9 @@
 EXE = gppKer_gpuComplex.ex
 SRC = gppKer_gpuComplex.cpp 
 
+#EXE = test2.ex
+#SRC = test2.cpp 
+
 #CXX = xlc++
 #CXX = g++
 CXX = CC
@@ -11,9 +14,12 @@ LINK = ${CXX}
 
 ifeq ($(CXX),CC)
 	CXXFLAGS= -g -O3 -qopenmp -qopt-report=5 -std=c++11
-	#CXXFLAGS+=-xCORE_AVX2
-	CXXFLAGS+=-xMIC-AVX512
+#    CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DLIKWID_PERFMON
+    CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DUSE_VTUNE -I${VTUNE_AMPLIFIER_XE_2018_DIR}/include -DLIKWID_PERFMON
+	CXXFLAGS+=-xCORE-AVX2
+	#CXXFLAGS+=-xMIC-AVX512
 	LINKFLAGS=-qopenmp -dynamic
+    LINKFLAGS+=-L /usr/common/software/likwid/4.3.0/lib -llikwid
 endif 
 
 ifeq ($(CXX),g++)
