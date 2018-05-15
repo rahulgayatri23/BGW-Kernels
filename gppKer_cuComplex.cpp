@@ -1,20 +1,6 @@
-//#include <iostream>
-//#include <cstdlib>
-//#include <memory>
-//
-//#include <iomanip>
-//#include <cmath>
-//#include <complex>
-//#include <omp.h>
-//#include <ctime>
-//#include <chrono>
-//#include <cuComplex.h>
-//#include <cuda.h>
-//#include <cuda_runtime_api.h>
 #include "cudaComplex.h"
 
 using namespace std;
-int debug = 0;
 
 inline void flagOCC_solver(double wxt, cuDoubleComplex *wtilde_array, int my_igp, int n1, cuDoubleComplex *aqsmtemp, cuDoubleComplex *aqsntemp, cuDoubleComplex *I_eps_array, cuDoubleComplex &ssxt, cuDoubleComplex &scht,int ncouls, int igp, int number_bands, int ngpown)
 {
@@ -160,62 +146,18 @@ int main(int argc, char** argv)
     double* d_vcoul;
     int *d_inv_igp_index, *d_indinv;
 
-    if(cudaMalloc((void**) &d_wtilde_array, ngpown*ncouls*sizeof(cuDoubleComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate wtilde_array on device Memory needed = " << ngpown*ncouls*sizeof(cuDoubleComplex) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_I_eps_array, ngpown*ncouls*sizeof(cuDoubleComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate I_eps_array on device Memory needed = " << ngpown*ncouls*sizeof(cuDoubleComplex) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_aqsntemp, number_bands*ncouls*sizeof(cuDoubleComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate aqsntemp on device Memory needed = " << number_bands*ncouls*sizeof(cuDoubleComplex) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_aqsmtemp, number_bands*ncouls*sizeof(cuDoubleComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate aqsmtemp on device Memory needed = " << number_bands*ncouls*sizeof(cuDoubleComplex) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_achtemp_re, 3*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate achtemp_re on device Memory needed = " << 3*sizeof(double) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_achtemp_im, 3*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate achtemp_im on device Memory needed = " << 3*sizeof(double) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_wx_array, 3*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate wx_array on device Memory needed = " << 3*sizeof(double) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_vcoul, ncouls*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate vcoul on device Memory needed = " << ncouls*sizeof(double) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_indinv, (ncouls+1)*sizeof(int)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate indinv on device Memory needed = " << (ncouls+1)*sizeof(double) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_inv_igp_index, ngpown*sizeof(int)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate inv_igp_index on device Memory needed = " << ngpown*sizeof(double) << " bytes" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_asxtemp, 3*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate asxtemp on device Memory needed = " << 3*sizeof(double) << " bytes" << endl;
-        return 0;
-    }
-                        
+    CudaSafeCall(cudaMalloc((void**) &d_wtilde_array, ngpown*ncouls*sizeof(cuDoubleComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_I_eps_array, ngpown*ncouls*sizeof(cuDoubleComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_aqsntemp, number_bands*ncouls*sizeof(cuDoubleComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_aqsmtemp, number_bands*ncouls*sizeof(cuDoubleComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_achtemp_re, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_achtemp_im, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_wx_array, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_vcoul, ncouls*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_indinv, (ncouls+1)*sizeof(int)));
+    CudaSafeCall(cudaMalloc((void**) &d_inv_igp_index, ngpown*sizeof(int)));
+    CudaSafeCall(cudaMalloc((void**) &d_asxtemp, 3*sizeof(double)));
+
     double occ=1.0;
     bool flag_occ;
     double achstemp_real = 0.00, achstemp_imag = 0.00;
@@ -254,108 +196,40 @@ int main(int argc, char** argv)
 
     auto start_withDataMovement = std::chrono::high_resolution_clock::now();
 
-    if(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy wtilde_array to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy I_eps_array to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy aqsntemp to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy aqsmtemp to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy vcoul to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_indinv, indinv, (ncouls+1)*sizeof(int), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy indinv to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy inv_igp_index to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_wx_array, wx_array, 3*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy wx_array to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_achtemp_re, achtemp_re, 3*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Could not copy back achtemp_re to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_achtemp_im, achtemp_im, 3*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Could not copy back achtemp_re to device" << endl;
-        return 0;
-    }
-    std::chrono::duration<double> elapsed_memcpyToDevice = std::chrono::high_resolution_clock::now() - start_withDataMovement;
-    cout << "********** memcpyToDevice **********= " << elapsed_memcpyToDevice.count() << " secs" << endl;
+    CudaSafeCall(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_indinv, indinv, (ncouls+1)*sizeof(int), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_wx_array, wx_array, 3*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_achtemp_re, achtemp_re, 3*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_achtemp_im, achtemp_im, 3*sizeof(double), cudaMemcpyHostToDevice));
 
-
-//Start Kernel and Kernel timing
     auto start_kernelTiming = std::chrono::high_resolution_clock::now();
 
     till_nvbandKernel(d_aqsmtemp, d_aqsntemp, d_asxtemp, d_inv_igp_index, d_indinv, d_wtilde_array, d_wx_array, d_I_eps_array, ncouls, nvband, ngpown, nstart, nend, d_vcoul); 
 
     gppKernelGPU( d_wtilde_array, d_aqsntemp, d_aqsmtemp, d_I_eps_array, ncouls, ngpown, number_bands, d_wx_array, d_achtemp_re, d_achtemp_im, d_vcoul, nstart, nend, d_indinv, d_inv_igp_index);
 
-// End Kernel and Kernel timing
-
-//Start Synch and  timing
     cudaDeviceSynchronize();
     std::chrono::duration<double> elapsed_kernelTiming = std::chrono::high_resolution_clock::now() - start_kernelTiming;
-    cout << "********** Kernel Time Taken **********= " << elapsed_kernelTiming.count() << " secs" << endl;
-//End Synch and  timing
 
-//Start memcpyToHost and  timing
-    auto start_memcpyToHost = std::chrono::high_resolution_clock::now();
-    if(cudaMemcpy(achtemp_re, d_achtemp_re, 3*sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess)
-    {
-        cout << "Could not copy back achtemp_re from device" << endl;
-    
-    }
-    if(cudaMemcpy(achtemp_im, d_achtemp_im, 3*sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess)
-    {
-        cout << "Could not copy back achtemp_re from device" << endl;
-        return 0;
-    }
-
-    std::chrono::duration<double> elapsed_memcpyToHost = std::chrono::high_resolution_clock::now() - start_memcpyToHost;
-//    cout << "********** memcpyToHost **********= " << elapsed_memcpyToHost.count() << " secs" << endl;
-//End memcpyToHost and  timing
-
-    std::chrono::duration<double> elapsed_withDataMovement = std::chrono::high_resolution_clock::now() - start_withDataMovement;
-//    cout << "********** Kernel+DataMov Time Taken **********= " << elapsed_withDataMovement.count() << " secs" << endl;
-//End dataMov + Kernel and  timing
+    CudaSafeCall(cudaMemcpy(achtemp_im, d_achtemp_im, 3*sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(achtemp_re, d_achtemp_re, 3*sizeof(double), cudaMemcpyDeviceToHost));
 
     printf(" \n Cuda Kernel Final achtemp\n");
     for(int iw=nstart; iw<nend; ++iw)
     {
         achtemp[iw] = make_cuDoubleComplex(achtemp_re[iw], achtemp_im[iw]);
-//        d_print(achtemp[iw]);
         printf("( %f, %f) ", achtemp[iw].x, achtemp[iw].y);
         printf("\n");
-//        achtemp[iw].print();
     }
 
     std::chrono::duration<double> elapsed_totalTime = std::chrono::high_resolution_clock::now() - start_totalTime;
 
+    cout << "********** Kernel Time Taken **********= " << elapsed_kernelTiming.count() << " secs" << endl;
     cout << "********** Total Time Taken **********= " << elapsed_totalTime.count() << " secs" << endl;
 
     cudaFree(d_wtilde_array);

@@ -12,64 +12,101 @@
 #include <chrono>
 
 
-#include "/sw/summitdev/cuda/8.0.54/include/vector_types.h"
+#include <vector_types.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
+#define NumberBandsKernel 0
+#define NgpownKernel 1
 
-#define NcoulsKernel 0
-#define NgpownKernel 0
-#define NcoulsNgpownKernel 0
-#define NumberBandsKernel 1
+#define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
+#define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
+
+inline void __cudaSafeCall( cudaError err, const char *file, const int line )
+{
+#ifdef CUDA_ERROR_CHECK
+    if ( cudaSuccess != err )
+    {
+        fprintf( stderr, "cudaSafeCall() failed at %s:%i : %s\n",
+        file, line, cudaGetErrorString( err ) );
+        exit( -1 );
+    }
+#endif
+
+    return;
+}
+
+inline void __cudaCheckError( const char *file, const int line )
+{
+#ifdef CUDA_ERROR_CHECK
+    cudaError err = cudaGetLastError();
+    if ( cudaSuccess != err )
+    {
+        fprintf( stderr, "cudaCheckError() failed at %s:%i : %s\n",
+        file, line, cudaGetErrorString( err ) );
+        exit( -1 );
+    }
+
+    // More careful checking. However, this will affect performance.
+    // Comment away if needed. - Rahul - commented the below deviceSynchronize
+//    err = cudaDeviceSynchronize();
+    if( cudaSuccess != err )
+    {
+        fprintf( stderr, "cudaCheckError() with sync failed at %s:%i : %s\n",file, line, cudaGetErrorString( err ) );
+        exit( -1 );
+    }
+#endif
+    return;
+}
+
 
 class GPUComplex : public double2{
 
     private : 
-    double re;
-    double im;
 
 public:
+    double2 complNum;
 
 explicit GPUComplex () {
-    re = 0.00;
-    im = 0.00;
+    complNum.x = 0.00;
+    complNum.y = 0.00;
 }
 
 
 __host__ __device__ explicit GPUComplex(const double& x, const double& y) {
-    re = x;
-    im = y;
+    complNum.x = x;
+    complNum.y = y;
 }
 
 GPUComplex(const GPUComplex& src) {
-    re = src.re;
-    im = src.im;
+    complNum.x = src.complNum.x;
+    complNum.y = src.complNum.y;
 }
 
 GPUComplex& operator =(const GPUComplex& src) {
-    re = src.re;
-    im = src.im;
+    complNum.x = src.complNum.x;
+    complNum.y = src.complNum.y;
 
     return *this;
 }
 
 GPUComplex& operator +=(const GPUComplex& src) {
-    re = src.re + this->re;
-    im = src.im + this->im;
+    complNum.x = src.complNum.x + this->complNum.x;
+    complNum.y = src.complNum.y + this->complNum.y;
 
     return *this;
 }
 
 GPUComplex& operator -=(const GPUComplex& src) {
-    re = src.re - this->re;
-    im = src.im - this->im;
+    complNum.x = src.complNum.x - this->complNum.x;
+    complNum.y = src.complNum.y - this->complNum.y;
 
     return *this;
 }
 
 GPUComplex& operator -() {
-    re = -this->re;
-    im = -this->im;
+    complNum.x = -this->complNum.x;
+    complNum.y = -this->complNum.y;
 
     return *this;
 }
@@ -79,40 +116,37 @@ GPUComplex& operator ~() {
 }
 
 void print() const {
-    printf("( %f, %f) ", this->re, this->im);
+    printf("( %f, %f) ", this->complNum.x, this->complNum.y);
     printf("\n");
 }
 
 double abs(const GPUComplex& src) {
 
-    double re_this = src.re * src.re;
-    double im_this = src.im * src.im;
+    double re_this = src.complNum.x * src.complNum.x;
+    double im_this = src.complNum.y * src.complNum.y;
 
-//    double result = sqrt(re_this+im_this);
     double result = (re_this+im_this);
-
     return result;
-
 }
 
 double get_real() const
 {
-    return this->re;
+    return this->complNum.x;
 }
 
 double get_imag() const
 {
-    return this->im;
+    return this->complNum.y;
 }
 
 void set_real(double val)
 {
-    this->re = val;
+    this->complNum.x = val;
 }
 
 void set_imag(double val) 
 {
-    this->im = val;
+    this->complNum.y = val;
 }
 
     friend inline GPUComplex GPUComplex_square(GPUComplex& src) ;
@@ -155,8 +189,8 @@ void set_imag(double val)
  * Return the square of a complex number 
  */
 GPUComplex GPUComplex_square(GPUComplex& src) {
-    double re_this = src.re ;
-    double im_this = src.im ;
+    double re_this = src.complNum.x ;
+    double im_this = src.complNum.y ;
 
     GPUComplex result(re_this*re_this - im_this*im_this, 2*re_this*im_this);
 
@@ -168,12 +202,11 @@ GPUComplex GPUComplex_square(GPUComplex& src) {
  */
 GPUComplex GPUComplex_conj(const GPUComplex& src) {
 
-double re_this = src.re;
-double im_this = -1 * src.im;
+    double re_this = src.complNum.x;
+    double im_this = -1 * src.complNum.y;
 
-GPUComplex result(re_this, im_this);
-return result;
-
+    GPUComplex result(re_this, im_this);
+    return result;
 }
 
 
@@ -182,8 +215,8 @@ return result;
  */
 GPUComplex GPUComplex_product(const GPUComplex& a, const GPUComplex& b) {
 
-    double re_this = a.re * b.re - a.im*b.im ;
-    double im_this = a.re * b.im + a.im*b.re ;
+    double re_this = a.complNum.x * b.complNum.x - a.complNum.y*b.complNum.y ;
+    double im_this = a.complNum.x * b.complNum.y + a.complNum.y*b.complNum.x ;
 
     GPUComplex result(re_this, im_this);
     return result;
@@ -193,11 +226,10 @@ GPUComplex GPUComplex_product(const GPUComplex& a, const GPUComplex& b) {
  * Return the absolute of a complex number 
  */
 double GPUComplex_abs(const GPUComplex& src) {
-    double re_this = src.re * src.re;
-    double im_this = src.im * src.im;
+    double re_this = src.complNum.x * src.complNum.x;
+    double im_this = src.complNum.y * src.complNum.y;
 
     double result = (re_this+im_this);
-//    double result = sqrt(re_this+im_this);
     return result;
 }
 
@@ -206,7 +238,7 @@ double GPUComplex_abs(const GPUComplex& src) {
  */
 GPUComplex GPUComplex_mult(GPUComplex& a, double b, double c) {
 
-    GPUComplex result(a.re * b * c, a.im * b * c);
+    GPUComplex result(a.complNum.x * b * c, a.complNum.y * b * c);
     return result;
 
 }
@@ -216,7 +248,7 @@ GPUComplex GPUComplex_mult(GPUComplex& a, double b, double c) {
  */
 GPUComplex GPUComplex_mult(const GPUComplex& a, double b) {
 
-   GPUComplex result(a.re*b, a.im*b);
+   GPUComplex result(a.complNum.x*b, a.complNum.y*b);
    return result;
 
 }
@@ -225,48 +257,47 @@ GPUComplex GPUComplex_mult(const GPUComplex& a, double b) {
  * Return the complex number a += b * c  
  */
 void GPUComplex_fma(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) {
-    double re_this = b.re * c.re - b.im*c.im ;
-    double im_this = b.re * c.im + b.im*c.re ;
+    double re_this = b.complNum.x * c.complNum.x - b.complNum.y*c.complNum.y ;
+    double im_this = b.complNum.x * c.complNum.y + b.complNum.y*c.complNum.x ;
 
     GPUComplex mult_result(re_this, im_this);
 
-    a.re += mult_result.re;
-    a.im += mult_result.im;
+    a.complNum.x += mult_result.complNum.x;
+    a.complNum.y += mult_result.complNum.y;
 }
 
 /*
  * Return the complex number a -= b * c  
  */
 void GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) {
-    double re_this = b.re * c.re - b.im*c.im ;
-    double im_this = b.re * c.im + b.im*c.re ;
+    double re_this = b.complNum.x * c.complNum.x - b.complNum.y*c.complNum.y ;
+    double im_this = b.complNum.x * c.complNum.y + b.complNum.y*c.complNum.x ;
 
     GPUComplex mult_result(re_this, im_this);
 
-    a.re -= mult_result.re;
-    a.im -= mult_result.im;
+    a.complNum.x -= mult_result.complNum.x;
+    a.complNum.y -= mult_result.complNum.y;
 }
 
 
 GPUComplex doubleMinusGPUComplex(const double &a, GPUComplex& src) {
-    GPUComplex result(a - src.re, 0 - src.im);
+    GPUComplex result(a - src.complNum.x, 0 - src.complNum.y);
     return result;
 }
 
 GPUComplex doublePlusGPUComplex(double a, GPUComplex& src) {
-    GPUComplex result(a + src.re, 0 + src.im);
+    GPUComplex result(a + src.complNum.x, 0 + src.complNum.y);
     return result;
 }
 
 double GPUComplex_real( const GPUComplex& src) {
-    return src.re;
+    return src.complNum.x;
 }
 
 double GPUComplex_imag( const GPUComplex& src) {
-    return src.im;
+    return src.complNum.y;
 }
 
-//void gppKernelGPU( GPUComplex* , GPUComplex* , GPUComplex*, GPUComplex* , int , int, int, double* , double* , double* , double* , int , int , int , int, int*, int*);
 void gppKernelGPU( GPUComplex *wtilde_array, GPUComplex *aqsntemp, GPUComplex* aqsmtemp, GPUComplex *I_eps_array, int ncouls, int ngpown, int number_bands, double* wx_array, double *achtemp_re, double *achtemp_im, double *vcoul, int nstart, int nend, int* indinv, int* inv_igp_index);
 
 void till_nvbandKernel(GPUComplex *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *asxtemp, int *inv_igp_index, int *indinv, GPUComplex *wtilde_array, double *wx_array, GPUComplex *I_eps_array, int ncouls, int nvband, int ngpown, int nstart, int nend, double *d_vcoul);

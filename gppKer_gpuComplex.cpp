@@ -13,6 +13,17 @@
 
 using namespace std;
 
+GPUComplex** allocateMemGPU(size_t size)
+{
+    void **d_src;
+    if(cudaMalloc((void**) &d_src, size) != cudaSuccess)
+    {
+        return NULL;
+    }
+
+    return (GPUComplex**) d_src;
+}
+
 inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, GPUComplex  *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, GPUComplex achstemp,  int* indinv, int ngpown, double* vcoul)
 {
     double to1 = 1e-6;
@@ -197,7 +208,6 @@ int main(int argc, char** argv)
 
     GPUComplex *acht_n1_loc = new GPUComplex[number_bands];
     GPUComplex *achtemp = new GPUComplex[nend-nstart];
-    GPUComplex *asxtemp = new GPUComplex[nend-nstart];
     GPUComplex *aqsmtemp = new GPUComplex[number_bands*ncouls];
     GPUComplex *aqsntemp = new GPUComplex[number_bands*ncouls];
     GPUComplex *I_eps_array = new GPUComplex[ngpown*ncouls];
@@ -217,63 +227,18 @@ int main(int argc, char** argv)
     double *d_achtemp_re, *d_achtemp_im, *d_vcoul, *d_wx_array;
     int *d_inv_igp_index, *d_indinv;
 
-    if(cudaMalloc((void**) &d_wtilde_array, ngpown*ncouls*sizeof(GPUComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate wtilde_array on device" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_I_eps_array, ngpown*ncouls*sizeof(GPUComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate I_eps_array on device" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_aqsntemp, number_bands*ncouls*sizeof(GPUComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate aqsntemp on device" << endl ;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_aqsmtemp, number_bands*ncouls*sizeof(GPUComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate aqsmtemp on device" << endl ;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_asxtemp, 3*sizeof(GPUComplex)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate asxtemp on device" << endl ;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_achtemp_re, 3*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate achtemp_re on device" << endl; 
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_achtemp_im, 3*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate achtemp_im on device" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_wx_array, 3*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate achtemp_im on device" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_vcoul, ncouls*sizeof(double)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate vcoul on device" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_indinv, (ncouls+1)*sizeof(int)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate indinv on device" << endl;
-        return 0;
-    }
-    if(cudaMalloc((void**) &d_inv_igp_index, ngpown*sizeof(int)) != cudaSuccess)
-    {
-        cout << "Nope could not allocate inv_igp_index on device" << endl;
-        return 0;
-    }
-//#endif
-                        
+    CudaSafeCall(cudaMalloc((void**) &d_wtilde_array, ngpown*ncouls*sizeof(GPUComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_I_eps_array, ngpown*ncouls*sizeof(GPUComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_aqsntemp, number_bands*ncouls*sizeof(GPUComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_aqsmtemp, number_bands*ncouls*sizeof(GPUComplex)));
+    CudaSafeCall(cudaMalloc((void**) &d_achtemp_re, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_achtemp_im, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_wx_array, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_vcoul, ncouls*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_indinv, (ncouls+1)*sizeof(int)));
+    CudaSafeCall(cudaMalloc((void**) &d_inv_igp_index, ngpown*sizeof(int)));
+    CudaSafeCall(cudaMalloc((void**) &d_asxtemp, 3*sizeof(double)));
+
     double occ=1.0;
     bool flag_occ;
     double achstemp_real = 0.00, achstemp_imag = 0.00;
@@ -284,15 +249,19 @@ int main(int argc, char** argv)
    for(int i=0; i<number_bands; i++)
        for(int j=0; j<ncouls; j++)
        {
-           aqsmtemp[i*ncouls+j] = expr;
-           aqsntemp[i*ncouls+j] = expr;
+           aqsmtemp[i*ncouls+j].complNum.x = 0.5;
+           aqsmtemp[i*ncouls+j].complNum.y = 0.5;
+           aqsntemp[i*ncouls+j].complNum.x = 0.5;
+           aqsntemp[i*ncouls+j].complNum.y = 0.5;
        }
 
    for(int i=0; i<ngpown; i++)
        for(int j=0; j<ncouls; j++)
        {
-           I_eps_array[i*ncouls+j] = expr;
-           wtilde_array[i*ncouls+j] = expr;
+           I_eps_array[i*ncouls+j].complNum.x = 0.5;
+           I_eps_array[i*ncouls+j].complNum.y = 0.5;
+           wtilde_array[i*ncouls+j].complNum.x = 0.5;
+           wtilde_array[i*ncouls+j].complNum.y = 0.5;
        }
 
    for(int i=0; i<ncouls; i++)
@@ -315,103 +284,31 @@ int main(int argc, char** argv)
 
     auto start_withDataMovement = std::chrono::high_resolution_clock::now();
 
-    if(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy wtilde_array to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy I_eps_array to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy aqsntemp to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy aqsmtemp to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_asxtemp, asxtemp, 3*sizeof(GPUComplex), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy asxtemp to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy vcoul to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_indinv, indinv, (ncouls+1)*sizeof(int), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy indinv to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy inv_igp_index to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_wx_array, wx_array, 3*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Nope could not copy wx_array to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_achtemp_re, achtemp_re, 3*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Could not copy back achtemp_re to device" << endl;
-        return 0;
-    }
-    if(cudaMemcpy(d_achtemp_im, achtemp_im, 3*sizeof(double), cudaMemcpyHostToDevice) != cudaSuccess)
-    {
-        cout << "Could not copy back achtemp_re to device" << endl;
-        return 0;
-    }
-    std::chrono::duration<double> elapsed_memcpyToDevice = std::chrono::high_resolution_clock::now() - start_withDataMovement;
-//    cout << "********** memcpyToDevice **********= " << elapsed_memcpyToDevice.count() << " secs" << endl;
+//Start memcpyToDevice 
+    CudaSafeCall(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_indinv, indinv, (ncouls+1)*sizeof(int), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_wx_array, wx_array, 3*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_achtemp_re, achtemp_re, 3*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_achtemp_im, achtemp_im, 3*sizeof(double), cudaMemcpyHostToDevice));
 
-
-
-//Start Kernel and Kernel timing
+//Start Kernel 
     auto start_kernelTiming = std::chrono::high_resolution_clock::now();
 
     till_nvbandKernel(d_aqsmtemp, d_aqsntemp, d_asxtemp, d_inv_igp_index, d_indinv, d_wtilde_array, d_wx_array, d_I_eps_array, ncouls, nvband, ngpown, nstart, nend, d_vcoul);
+
     gppKernelGPU( d_wtilde_array, d_aqsntemp, d_aqsmtemp, d_I_eps_array, ncouls, ngpown, number_bands, d_wx_array, d_achtemp_re, d_achtemp_im, d_vcoul, nstart, nend, d_indinv, d_inv_igp_index);
 
-    std::chrono::duration<double> elapsed_kernelTiming = std::chrono::high_resolution_clock::now() - start_kernelTiming;
-//    cout << "********** Kernel Time Taken **********= " << elapsed_kernelTiming.count() << " secs" << endl;
-// End Kernel and Kernel timing
-
-//Start Synch and  timing
-    auto start_synchTime = std::chrono::high_resolution_clock::now();
     cudaDeviceSynchronize();
-    std::chrono::duration<double> elapsed_synchTime = std::chrono::high_resolution_clock::now() - start_synchTime;
-//    cout << "********** synchTime **********= " << elapsed_synchTime.count() << " secs" << endl;
-//End Synch and  timing
+    std::chrono::duration<double> elapsed_kernelTiming = std::chrono::high_resolution_clock::now() - start_kernelTiming;
 
-//Start memcpyToHost and  timing
-    auto start_memcpyToHost = std::chrono::high_resolution_clock::now();
-    if(cudaMemcpy(achtemp_re, d_achtemp_re, 3*sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess)
-    {
-        cout << "Could not copy back achtemp_re from device" << endl;
-    
-    }
-    if(cudaMemcpy(achtemp_im, d_achtemp_im, 3*sizeof(double), cudaMemcpyDeviceToHost) != cudaSuccess)
-    {
-        cout << "Could not copy back achtemp_re from device" << endl;
-        return 0;
-    }
-
-    std::chrono::duration<double> elapsed_memcpyToHost = std::chrono::high_resolution_clock::now() - start_memcpyToHost;
-//    cout << "********** memcpyToHost **********= " << elapsed_memcpyToHost.count() << " secs" << endl;
-//End memcpyToHost and  timing
-
-    std::chrono::duration<double> elapsed_withDataMovement = std::chrono::high_resolution_clock::now() - start_withDataMovement;
-//    cout << "********** Kernel+DataMov Time Taken **********= " << elapsed_withDataMovement.count() << " secs" << endl;
-//End dataMov + Kernel and  timing
+//Start memcpyToHost 
+    CudaSafeCall(cudaMemcpy(achtemp_im, d_achtemp_im, 3*sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(achtemp_re, d_achtemp_re, 3*sizeof(double), cudaMemcpyDeviceToHost));
 
     printf(" \n Cuda Kernel Final achtemp\n");
     for(int iw=nstart; iw<nend; ++iw)
@@ -422,6 +319,7 @@ int main(int argc, char** argv)
 
     std::chrono::duration<double> elapsed_totalTime = std::chrono::high_resolution_clock::now() - start_totalTime;
 
+    cout << "********** Kernel Time Taken **********= " << elapsed_kernelTiming.count() << " secs" << endl;
     cout << "********** Total Time Taken **********= " << elapsed_totalTime.count() << " secs" << endl;
 
     cudaFree(d_wtilde_array);
@@ -441,7 +339,6 @@ int main(int argc, char** argv)
     free(aqsntemp);
     free(I_eps_array);
     free(wtilde_array);
-    free(asxtemp);
     free(vcoul);
     free(ssx_array);
 
