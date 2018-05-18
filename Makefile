@@ -6,9 +6,9 @@ SRC = gppKer_gpuComplex.cpp
 #EXE = test2.ex
 #SRC = test2.cpp 
 
-#CXX = xlc++
+CXX = xlc++_r
 #CXX = g++
-CXX = CC
+#CXX = CC
 
 LINK = ${CXX}
 
@@ -27,7 +27,7 @@ ifeq ($(CXX),g++)
 	LINKFLAGS=-fopenmp
 endif 
 
-ifeq ($(CXX),xlc++)
+ifeq ($(CXX),xlc++_r)
 	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp
 	LINKFLAGS=-qsmp
 endif 
