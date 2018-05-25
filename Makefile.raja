@@ -11,13 +11,13 @@ CXX = CC
 
 LINK = ${CXX}
 
-ifeq ($(cxx),cc)
-	cxxflags=-o3 -qopenmp -qopt-report=5
-	cxxflags+=-xcore_avx2
-	cxxflags+=-i $(raja_location)/include
-#	cxxflags+=-xmic_avx512
-	linkflags=-qopenmp -l $(raja_location)/lib -lraja
-endif 
+#ifeq ($(CXX),CC)
+	CXXFLAGS=-O3 -qopenmp -qopt-report=5 -std=c++11
+	CXXFLAGS+=-xcore_avx2
+	CXXFLAGS+=-i $(RAJA_LOCATION)/include
+#	CXXFLAGS+=-xmic_avx512
+	LINKFLAGS=-qopenmp -l $(RAJA_LOCATION)/lib -lraja
+#endif 
 
 ifeq ($(CXX),g++)
 	CXXFLAGS= -g -O3 -std=c++11 -fopenmp  -ffast-math -funroll-loops -ftree-vectorizer-verbose=2 
