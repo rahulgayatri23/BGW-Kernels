@@ -8,6 +8,7 @@
 #include <omp.h>
 #include <ctime>
 #include <chrono>
+#include<inttypes.h>
 
 #include "GPUComplex.h"
 
@@ -249,19 +250,19 @@ int main(int argc, char** argv)
    for(int i=0; i<number_bands; i++)
        for(int j=0; j<ncouls; j++)
        {
-           aqsmtemp[i*ncouls+j].complNum.x = 0.5;
-           aqsmtemp[i*ncouls+j].complNum.y = 0.5;
-           aqsntemp[i*ncouls+j].complNum.x = 0.5;
-           aqsntemp[i*ncouls+j].complNum.y = 0.5;
+           aqsmtemp[i*ncouls+j].x = 0.5;
+           aqsmtemp[i*ncouls+j].y = 0.5;
+           aqsntemp[i*ncouls+j].x = 0.5;
+           aqsntemp[i*ncouls+j].y = 0.5;
        }
 
    for(int i=0; i<ngpown; i++)
        for(int j=0; j<ncouls; j++)
        {
-           I_eps_array[i*ncouls+j].complNum.x = 0.5;
-           I_eps_array[i*ncouls+j].complNum.y = 0.5;
-           wtilde_array[i*ncouls+j].complNum.x = 0.5;
-           wtilde_array[i*ncouls+j].complNum.y = 0.5;
+           I_eps_array[i*ncouls+j].x = 0.5;
+           I_eps_array[i*ncouls+j].y = 0.5;
+           wtilde_array[i*ncouls+j].x = 0.5;
+           wtilde_array[i*ncouls+j].y = 0.5;
        }
 
    for(int i=0; i<ncouls; i++)
@@ -283,19 +284,48 @@ int main(int argc, char** argv)
     }
 
     auto start_withDataMovement = std::chrono::high_resolution_clock::now();
+    uintmax_t mem_alloc = 0.00;
 
 //Start memcpyToDevice 
-    CudaSafeCall(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_indinv, indinv, (ncouls+1)*sizeof(int), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_wx_array, wx_array, 3*sizeof(double), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_achtemp_re, achtemp_re, 3*sizeof(double), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_achtemp_im, achtemp_im, 3*sizeof(double), cudaMemcpyHostToDevice));
+    printf("Sizeof(GPUComplex) = %u\n", sizeof(GPUComplex));
 
+    CudaSafeCall(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
+    printf("Sizeof(wtilde_array) = %u\n", ngpown*ncouls*sizeof(GPUComplex));
+
+    CudaSafeCall(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
+    printf("Sizeof(I_eps_array) = %u\n", ngpown*ncouls*sizeof(GPUComplex));
+    mem_alloc += 2*ngpown*ncouls*sizeof(GPUComplex);
+
+    CudaSafeCall(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
+    printf("Sizeof(aqsmtemp) = %u\n", number_bands*ncouls*sizeof(GPUComplex));
+
+    CudaSafeCall(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
+    printf("Sizeof(aqsntemp) = %u\n", number_bands*ncouls*sizeof(GPUComplex));
+    mem_alloc += 2*number_bands*ncouls*sizeof(GPUComplex);
+
+    CudaSafeCall(cudaMemcpy(d_indinv, indinv, (ncouls+1)*sizeof(int), cudaMemcpyHostToDevice));
+    printf("Sizeof(vcoul) = %u\n", ncouls*sizeof(double));
+    mem_alloc += ncouls*sizeof(int);
+
+    CudaSafeCall(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice));
+    printf("Sizeof(inv_igp_index) = %u\n", ngpown*sizeof(int));
+    mem_alloc += ngpown*sizeof(int);
+
+    CudaSafeCall(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice));
+    printf("Sizeof(vcoul) = %u\n", ncouls*sizeof(double));
+    mem_alloc += ncouls*sizeof(double);
+
+    CudaSafeCall(cudaMemcpy(d_wx_array, wx_array, 3*sizeof(double), cudaMemcpyHostToDevice));
+    printf("Sizeof(wx_array) = %u\n", 3*sizeof(double));
+
+    CudaSafeCall(cudaMemcpy(d_achtemp_re, achtemp_re, 3*sizeof(double), cudaMemcpyHostToDevice));
+    printf("Sizeof(achtemp_re) = %u\n", 3*sizeof(double));
+
+    CudaSafeCall(cudaMemcpy(d_achtemp_im, achtemp_im, 3*sizeof(double), cudaMemcpyHostToDevice));
+    printf("Sizeof(achtemp_im) = %u\n", 3*sizeof(double));
+    mem_alloc += 3*3*sizeof(double);
+
+    printf("mem_alloc = %ju\n", mem_alloc);
 //Start Kernel 
     auto start_kernelTiming = std::chrono::high_resolution_clock::now();
 
