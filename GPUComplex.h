@@ -29,7 +29,7 @@ explicit GPUComplex () {
 }
 
 
-__host__ __device__ explicit GPUComplex(const double& a, const double& b) {
+explicit GPUComplex(const double& a, const double& b) {
     x = a;
     y = b;
 }
@@ -105,40 +105,20 @@ void set_imag(double val)
     this->y = val;
 }
 
-    friend inline GPUComplex GPUComplex_square(GPUComplex& src) ;
-    friend inline GPUComplex GPUComplex_conj(const GPUComplex& src) ;
-    friend inline GPUComplex GPUComplex_product(const GPUComplex& a, const GPUComplex& b) ;
-    friend inline double GPUComplex_abs(const GPUComplex& src) ;
-    friend inline GPUComplex GPUComplex_mult(GPUComplex& a, double b, double c) ;
-    friend inline GPUComplex GPUComplex_mult(const GPUComplex& a, double b) ;
-    friend inline void GPUComplex_fma(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
-    friend inline void GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
-    friend inline GPUComplex doubleMinusGPUComplex(const double &a, GPUComplex& src) ;
-    friend inline GPUComplex doublePlusGPUComplex(double a, GPUComplex& src) ;
-    friend inline double GPUComplex_real( const GPUComplex& src) ;
-    friend inline double GPUComplex_imag( const GPUComplex& src) ;
-
-    
-//Device Functions 
-    friend __device__ const GPUComplex d_GPUComplex_square(GPUComplex& src) ;
-    friend __device__ const GPUComplex d_GPUComplex_conj(const GPUComplex& src) ;
-    friend __device__ const GPUComplex d_GPUComplex_product(const GPUComplex& a, const GPUComplex& b) ;
-    friend __device__ double d_GPUComplex_abs(const GPUComplex& src) ;
-    friend __device__ const GPUComplex d_GPUComplex_mult(GPUComplex& a, double b, double c) ;
-    friend __device__ const GPUComplex d_GPUComplex_mult(const GPUComplex& a, double b) ;
-    friend __device__ void d_GPUComplex_fma(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
-    friend __device__ void d_GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
-    friend __device__ GPUComplex d_doubleMinusGPUComplex(const double &a, GPUComplex& src) ;
-    friend __device__ const GPUComplex d_doublePlusGPUComplex(double a, GPUComplex& src) ;
-    friend __device__ double d_GPUComplex_real( const GPUComplex& src) ;
-    friend __device__ double d_GPUComplex_imag( const GPUComplex& src) ;
-    friend __device__ void d_GPUComplex_plusEquals( GPUComplex& a, const GPUComplex & b); 
-    friend __device__ void d_GPUComplex_Equals( GPUComplex& a, const GPUComplex & b); 
-    friend __device__ void d_print( const GPUComplex& src) ;
-    friend __device__ void ncoulsKernel(GPUComplex& mygpvar1, GPUComplex& wdiff, GPUComplex& aqsntemp_index, GPUComplex& wtilde_array_index, GPUComplex& I_eps_array_index, double vcoul_igp, double& achtemp_re_loc, double& achtemp_im_loc);
-    friend __device__ void ncoulsKernel(GPUComplex& mygpvar1, double vcoul_igp, double& achtemp_re_loc, double& achtemp_im_loc);
-
+    GPUComplex GPUComplex_square(GPUComplex& src) ;
+    GPUComplex GPUComplex_conj(const GPUComplex& src) ;
+    GPUComplex GPUComplex_product(const GPUComplex& a, const GPUComplex& b) ;
+    double GPUComplex_abs(const GPUComplex& src) ;
+    GPUComplex GPUComplex_mult(GPUComplex& a, double b, double c) ;
+    GPUComplex GPUComplex_mult(const GPUComplex& a, double b) ;
+    void GPUComplex_fma(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
+    void GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
+    GPUComplex doubleMinusGPUComplex(const double &a, GPUComplex& src) ;
+    GPUComplex doublePlusGPUComplex(double a, GPUComplex& src) ;
+    double GPUComplex_real( const GPUComplex& src) ;
+    double GPUComplex_imag( const GPUComplex& src) ;
 };
+
 //Inline functions have to be defined in the same file as the declaration
 
 /*
