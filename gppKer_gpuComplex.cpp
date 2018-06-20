@@ -279,8 +279,7 @@ int main(int argc, char** argv)
 
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
-#pragma omp for schedule(dynamic) private(tid) \
-        reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
+#pragma omp parallel for  default(shared) reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
             int indigp = inv_igp_index[my_igp];
