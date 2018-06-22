@@ -1,14 +1,11 @@
 #include <iostream>
 #include <cstdlib>
 #include <memory>
-
 #include <iomanip>
 #include <cmath>
 #include <complex>
-#include <omp.h>
 
 using namespace std;
-int debug = 0;
 
 
 void ssxt_scht_solver(double wxt, int igp, int my_igp, int ig, std::complex<double> wtilde, std::complex<double> wtilde2, std::complex<double> Omega2, std::complex<double> matngmatmgp, std::complex<double> matngpmatmg, std::complex<double> mygpvar1, std::complex<double> mygpvar2, std::complex<double>& ssxa, std::complex<double>& scha, std::complex<double> I_eps_array_igp_myIgp)
@@ -122,7 +119,7 @@ void flagOCC_solver(double wxt, std::complex<double> **wtilde_array, int my_igp,
     }
 }
 
-void noflagOCC_solver(int igbeg, int igend, int igblk, double wxt, std::complex<double> **wtilde_array, int my_igp, int n1, std::complex<double> **aqsmtemp, std::complex<double> **aqsntemp, std::complex<double> **I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int igmax, int ncouls, int igp)
+void noflagOCC_solver(int ig, int ncouls, double wxt, std::complex<double> **wtilde_array, int my_igp, int n1, std::complex<double> **aqsmtemp, std::complex<double> **aqsntemp, std::complex<double> **I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int igmax, int ncouls, int igp)
 {
     std::complex<double> scha[ncouls]/*, sch, delw, wdiff, cden*/;
     double to1 = 1e-6;
@@ -133,12 +130,8 @@ void noflagOCC_solver(int igbeg, int igend, int igblk, double wxt, std::complex<
     std::complex<double> mygpvar1 = std::conj(aqsmtemp[n1][igp]);
     std::complex<double> rden_compl, cden, wdiff, delw, scht_local(0.0,0.0), delw_conj; 
     double delwr, wdiffr, rden, rden_arr[ncouls];
-    bool test[ncouls]; 
     
-
-//#pragma omp simd private(wdiff, cden, rden, delw, delwr, wdiffr) lastprivate(scht_local)
-//#pragma ivdep
-    for(int ig = igbeg; ig<min(igend,igmax); ++ig)
+    for(int ig = 0; ig<ncouls; ++ig)
     {
         wdiff = wxt - wtilde_array[my_igp][ig];
         wdiffr = real(wdiff * conj(wdiff));
@@ -151,13 +144,8 @@ void noflagOCC_solver(int igbeg, int igend, int igblk, double wxt, std::complex<
         if((wdiffr > limittwo) && (delwr < limitone))
             scha[ig] = mygpvar1 * aqsntemp[n1][ig] * delw * I_eps_array[my_igp][ig] ;
 
+        scht += scha[ig];
     }
-    for(int ig = igbeg; ig<min(igend,igmax); ++ig)
-    {
-        if(test[ig])
-            scht += scha[ig];
-    }
-
 }
 
 int main(int argc, char** argv)
@@ -331,9 +319,6 @@ int main(int argc, char** argv)
             if(abs(wx_array[iw]) < to1) wx_array[iw] = to1;
         }
 
-//#pragma omp parallel for shared(wtilde_array, aqsntemp, aqsmtemp, I_eps_array, scha,wx_array)  firstprivate(ssx_array, sch_array, halfinvwtilde, ssxcutoff, sch, ssx, \
-        Omega2, scht, ssxt, wxt, eden, cden) schedule(dynamic) \
-        private(scha_mult, mygpvar1, mygpvar2, wtilde, matngmatmgp, matngpmatmg, wtilde2, wdiff, delw, delw2, delwr, wdiffr)
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
             int indigp = inv_igp_index[my_igp];
@@ -366,20 +351,15 @@ int main(int argc, char** argv)
             else
             {
                 int igblk = 512;
-                //403 - 479
                 noflagOCC_startTimer = omp_get_wtime(); //End timing here
 
-                for(int igbeg=0; igbeg<igmax; igbeg+=igblk)
+                for(int iw=nstart; iw<nend; ++iw)
                 {
-                    int igend = min(igbeg+igblk, igmax);
-                    for(int iw=nstart; iw<nend; ++iw)
-                    {
                         scht = ssxt = expr0;
                         wxt = wx_array[iw];
+                        noflagOCC_solver(ig, ncouls, wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp);
 
-                        noflagOCC_solver(igbeg, igend, igblk, wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp);
                         sch_array[iw] +=(double) 0.5*scht;
-                    }
                 }
 
                 noflagOCC_totalTime += omp_get_wtime() - noflagOCC_startTimer;
@@ -389,19 +369,14 @@ int main(int argc, char** argv)
             {
                 for(int iw=nstart; iw<nend; ++iw)
                 {
-//#pragma omp critical
                     asxtemp[iw] += ssx_array[iw] * occ * vcoul[igp]; //occ does not change and is 1.00 so why not remove it.
                 }
             }
 
-//#pragma omp critical
-    {
             for(int iw=nstart; iw<nend; ++iw)
                 achtemp[iw] += sch_array[iw] * vcoul[igp];
 
             acht_n1_loc[n1] += sch_array[2] * vcoul[igp];
-    }
-
 
             } //for the if-loop to avoid break inside an openmp pragma statment
         }
