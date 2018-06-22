@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <cmath>
 #include <complex>
+#include <omp.h>
 
 using namespace std;
 
@@ -119,7 +120,7 @@ void flagOCC_solver(double wxt, std::complex<double> **wtilde_array, int my_igp,
     }
 }
 
-void noflagOCC_solver(int ig, int ncouls, double wxt, std::complex<double> **wtilde_array, int my_igp, int n1, std::complex<double> **aqsmtemp, std::complex<double> **aqsntemp, std::complex<double> **I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int igmax, int ncouls, int igp)
+void noflagOCC_solver(double wxt, std::complex<double> **wtilde_array, int my_igp, int n1, std::complex<double> **aqsmtemp, std::complex<double> **aqsntemp, std::complex<double> **I_eps_array, std::complex<double> &ssxt, std::complex<double> &scht, int igmax, int ncouls, int igp)
 {
     std::complex<double> scha[ncouls]/*, sch, delw, wdiff, cden*/;
     double to1 = 1e-6;
@@ -357,7 +358,7 @@ int main(int argc, char** argv)
                 {
                         scht = ssxt = expr0;
                         wxt = wx_array[iw];
-                        noflagOCC_solver(ig, ncouls, wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp);
+                        noflagOCC_solver(wxt, wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, igmax, ncouls, igp);
 
                         sch_array[iw] +=(double) 0.5*scht;
                 }
