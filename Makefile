@@ -1,19 +1,20 @@
-EXE = gppKer.ex
-SRC = gppKer.cpp 
-#EXE = gppKer_gpuComplex.ex
-#SRC = gppKer_gpuComplex.cpp 
+#EXE = gppKer.ex
+#SRC = gppKer.cpp 
+EXE = gppKerSeq.ex
+SRC = gppKerSeq.cpp 
 
-CXX = xlc++_r
+#CXX = xlc++_r
 #CXX = g++
-#CXX = CC
+CXX = CC
 
 LINK = ${CXX}
 
 ifeq ($(CXX),CC)
-	CXXFLAGS= -g -O3 -qopenmp -qopt-report=5 -std=c++11
-	#CXXFLAGS+=-xCORE_AVX2
-	CXXFLAGS+=-xMIC-AVX512
-	LINKFLAGS=-qopenmp -dynamic
+#	CXXFLAGS= -g -O3 -std=c++11 -qopenmp -qopt-report=5 
+#	#CXXFLAGS+=-xCORE_AVX2
+##	CXXFLAGS+=-xMIC-AVX512
+#	LINKFLAGS=-qopenmp# -dynamic
+	CXXFLAGS= -hlist=a
 endif 
 
 ifeq ($(CXX),g++)
