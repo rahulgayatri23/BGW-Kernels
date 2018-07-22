@@ -1,10 +1,9 @@
-#EXE = gppKer.ex
-#SRC = gppKer.cpp 
+#EXE = gppKer_double.ex
+#SRC = gppKer_double.cpp 
 EXE = gppKer_gpuComplex.ex
 SRC = gppKer_gpuComplex.cpp 
-
-#EXE = test2.ex
-#SRC = test2.cpp 
+#EXE = gppCustomComplex.ex
+#SRC = gppCustomComplex.cpp 
 
 #CXX = xlc++_r
 #CXX = g++
@@ -14,16 +13,17 @@ LINK = ${CXX}
 
 ifeq ($(CXX),CC)
 ##Intel compiler flag
-#	CXXFLAGS= -g -O3 -qopenmp -qopt-report=5 -std=c++11
-##    CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DLIKWID_PERFMON
-##    CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DUSE_VTUNE -I${VTUNE_AMPLIFIER_XE_2018_DIR}/include -DLIKWID_PERFMON
-#	CXXFLAGS+=-xCORE-AVX2
-#	#CXXFLAGS+=-xMIC-AVX514
-#	LINKFLAGS=-qopenmp -dynamic
+	CXXFLAGS= -g -O3 -qopenmp -qopt-report=5 -std=c++11
+    CXXFLAGS+=-fma #Fused multiply and add
+#    CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DLIKWID_PERFMON
+#    CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DUSE_VTUNE -I${VTUNE_AMPLIFIER_XE_2018_DIR}/include -DLIKWID_PERFMON
+	#CXXFLAGS+=-xCORE-AVX2
+	CXXFLAGS+=-xMIC-AVX512
+    LINKFLAGS=-qopenmp -dynamic
 #    LINKFLAGS+=-L /usr/common/software/likwid/4.3.0/lib -llikwid
 
 #Cray compiler flag
-	CXXFLAGS= -hlist=a
+#	CXXFLAGS= -hlist=a
 endif 
 
 ifeq ($(CXX),g++)
