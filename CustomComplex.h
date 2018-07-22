@@ -1,5 +1,5 @@
 /*
-CustomComplex class that represents a complex class comprised of double's to represent a real and imaginary parts.
+Templated CustomComplex class that represents a complex class comprised of  any type of real and imaginary types.
 */
 #ifndef __CustomComplex
 #define __CustomComplex
@@ -14,12 +14,12 @@ CustomComplex class that represents a complex class comprised of double's to rep
 #include <stdio.h>
 #include <sys/time.h>
 
-
+template<class real, class imag>
 class CustomComplex {
 
     private : 
-    double re;
-    double im;
+    real re;
+    imag im;
 
     public:
     explicit CustomComplex () {
@@ -95,49 +95,53 @@ class CustomComplex {
         this->im = val;
 }
 
-    friend inline CustomComplex operator *(const CustomComplex &a, const CustomComplex &b) {
-        double x_this = a.re * b.re - a.im*b.im ;
-        double y_this = a.re * b.im + a.im*b.re ;
-        CustomComplex result(x_this, y_this);
+template<class real, class imag>
+    friend inline CustomComplex<real,imag> operator *(const CustomComplex<real,imag> &a, const CustomComplex<real,imag> &b) {
+        real x_this = a.re * b.re - a.im*b.im ;
+        imag y_this = a.re * b.im + a.im*b.re ;
+        CustomComplex<real,imag> result(x_this, y_this);
         return (result);
     }
 
-    friend inline CustomComplex operator *(const CustomComplex &a, const double &b) {
-       CustomComplex result(a.re*b, a.im*b);
+template<class real, class imag>
+    friend inline CustomComplex<real,imag> operator *(const CustomComplex<real,imag> &a, const double &b) {
+       CustomComplex<real,imag> result(a.re*b, a.im*b);
        return result;
     }
 
-    friend inline CustomComplex operator -(const double &a, CustomComplex& src) {
-        CustomComplex result(a - src.re, 0 - src.im);
+template<class real, class imag>
+    friend inline CustomComplex<real,imag> operator -(const double &a, CustomComplex<real,imag>& src) {
+        CustomComplex<real,imag> result(a - src.re, 0 - src.im);
         return result;
     }
 
-    friend inline CustomComplex operator +(const double &a, CustomComplex& src) {
-        CustomComplex result(a + src.re, src.im);
+template<class real, class imag>
+    friend inline CustomComplex<real,imag> operator +(const double &a, CustomComplex<real,imag>& src) {
+        CustomComplex<real,imag> result(a + src.re, src.im);
         return result;
     }
 
-    friend inline CustomComplex CustomComplex_conj(const CustomComplex& src) ;
-    friend inline double CustomComplex_abs(const CustomComplex& src) ;
-    friend inline double CustomComplex_real( const CustomComplex& src) ;
-    friend inline double CustomComplex_imag( const CustomComplex& src) ;
+template<class real, class imag>
+    friend inline CustomComplex<real,imag> CustomComplex_conj(const CustomComplex<real,imag>& src) ;
+template<class real, class imag>
+    friend inline double CustomComplex_abs(const CustomComplex<real,imag>& src) ;
+template<class real, class imag>
+    friend inline double CustomComplex_real( const CustomComplex<real,imag>& src) ;
+template<class real, class imag>
+    friend inline double CustomComplex_imag( const CustomComplex<real,imag>& src) ;
 };
-
-    inline CustomComplex CustomComplex_conj(const CustomComplex& src) ;
-    inline double CustomComplex_abs(const CustomComplex& src) ;
-
-//Inline functions have to be defined in the same file as the declaration
 
 /*
  * Return the conjugate of a complex number 
  1flop
  */
-CustomComplex CustomComplex_conj(const CustomComplex& src) {
+template<class real, class imag>
+inline CustomComplex<real, imag> CustomComplex_conj(const CustomComplex<real,imag>& src) {
 
-    double re_this = src.re;
-    double im_this = -1 * src.im;
+    real re_this = src.re;
+    imag im_this = -1 * src.im;
 
-    CustomComplex result(re_this, im_this);
+    CustomComplex<real,imag> result(re_this, im_this);
     return result;
 
 }
@@ -145,25 +149,28 @@ CustomComplex CustomComplex_conj(const CustomComplex& src) {
 /*
  * Return the absolute of a complex number 
  */
-double CustomComplex_abs(const CustomComplex& src) {
-    double re_this = src.re * src.re;
-    double im_this = src.im * src.im;
+template<class real, class imag>
+inline double CustomComplex_abs(const CustomComplex<real,imag>& src) {
+    real re_this = src.re * src.re;
+    imag im_this = src.im * src.im;
 
-    double result = sqrt(re_this+im_this);
+    real result = sqrt(re_this+im_this);
     return result;
 }
 
 /*
  * Return the real part of a complex number 
  */
-double CustomComplex_real( const CustomComplex& src) {
+template<class real, class imag>
+inline double CustomComplex_real( const CustomComplex<real,imag>& src) {
     return src.re;
 }
 
 /*
  * Return the imaginary part of a complex number 
  */
-double CustomComplex_imag( const CustomComplex& src) {
+template<class real, class imag>
+inline double CustomComplex_imag( const CustomComplex<real,imag>& src) {
     return src.im;
 }
 
