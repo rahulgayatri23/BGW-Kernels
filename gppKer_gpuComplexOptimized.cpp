@@ -7,14 +7,12 @@
 #include <complex>
 #include <omp.h>
 #include <ctime>
-//#include <chrono>
-#include <sys/time.h>
+#include <chrono>
 
 #include "Complex.h"
 
 using namespace std;
-#define nstart 0
-#define nend 3
+int debug = 0;
 
 inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, GPUComplex  *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, GPUComplex achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
 {
@@ -133,27 +131,23 @@ int main(int argc, char** argv)
         std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <nodes_per_mpi_group> " << endl;
         exit (0);
     }
-//    auto start_totalTime = std::chrono::high_resolution_clock::now();
+    auto start_totalTime = std::chrono::high_resolution_clock::now();
 
-//Input parameters stored in these variables.
-    const int number_bands = atoi(argv[1]);
-    const int nvband = atoi(argv[2]);
-    const int ncouls = atoi(argv[3]);
-    const int nodes_per_group = atoi(argv[4]);
-    const int npes = 1; 
-    const int ngpown = ncouls / (nodes_per_group * npes); 
+    int number_bands = atoi(argv[1]);
+    int nvband = atoi(argv[2]);
+    int ncouls = atoi(argv[3]);
+    int nodes_per_group = atoi(argv[4]);
 
-//Constants that will be used later
-    const double e_lk = 10;
-    const double dw = 1;
-    const double to1 = 1e-6;
-    const double gamma = 0.5;
-    const double sexcut = 4.0;
-    const double limitone = 1.0/(to1*4.0);
-    const double limittwo = pow(0.5,2);
-    const double e_n1kq= 6.0; 
-    const double occ=1.0;
 
+    int npes = 1; //Represents the number of ranks per node
+    int ngpown = ncouls / (nodes_per_group * npes); //Number of gvectors per mpi task
+
+    double e_lk = 10;
+    double dw = 1;
+    int nstart = 0, nend = 3;
+
+    int inv_igp_index[ngpown];
+    int indinv[ncouls+1];
 
     //OpenMP Printing of threads on Host and Device
     int tid, numThreads, numTeams;
@@ -164,6 +158,15 @@ int main(int argc, char** argv)
             numThreads = omp_get_num_threads();
     }
     std::cout << "Number of OpenMP Threads = " << numThreads << endl;
+
+
+    double to1 = 1e-6, \
+    gamma = 0.5, \
+    sexcut = 4.0;
+    double limitone = 1.0/(to1*4.0), \
+    limittwo = pow(0.5,2);
+
+    double e_n1kq= 6.0; //This in the fortran code is derived through the double dimenrsion array ekq whose 2nd dimension is 1 and all the elements in the array have the same value
 
     //Printing out the params passed.
     std::cout << "number_bands = " << number_bands \
@@ -177,48 +180,36 @@ int main(int argc, char** argv)
         << "\t sexcut = " << sexcut \
         << "\t limitone = " << limitone \
         << "\t limittwo = " << limittwo << endl;
+
+
+    //ALLOCATE statements from fortran gppkernel.
+    
    
     GPUComplex expr0(0.00, 0.00);
     GPUComplex expr(0.5, 0.5);
-    long double memFootPrint = 0.00;
 
-    //ALLOCATE statements from fortran gppkernel.
     GPUComplex *acht_n1_loc = new GPUComplex[number_bands];
-    memFootPrint += number_bands*sizeof(GPUComplex);
-
     GPUComplex *achtemp = new GPUComplex[nend-nstart];
     GPUComplex *asxtemp = new GPUComplex[nend-nstart];
-    GPUComplex *ssx_array = new GPUComplex[nend-nstart];
-    memFootPrint += 3*(nend-nstart)*sizeof(GPUComplex);
-
     GPUComplex *aqsmtemp = new GPUComplex[number_bands*ncouls];
     GPUComplex *aqsntemp = new GPUComplex[number_bands*ncouls];
-    memFootPrint += 2*(number_bands*ncouls)*sizeof(GPUComplex);
-
     GPUComplex *I_eps_array = new GPUComplex[ngpown*ncouls];
     GPUComplex *wtilde_array = new GPUComplex[ngpown*ncouls];
-    memFootPrint += 2*(ngpown*ncouls)*sizeof(GPUComplex);
-
+    GPUComplex *ssx_array = new GPUComplex[3];
     GPUComplex *ssxa = new GPUComplex[ncouls];
-    double *vcoul = new double[ncouls];
-    memFootPrint += ncouls*sizeof(GPUComplex);
-    memFootPrint += ncouls*sizeof(double);
-
-    int *inv_igp_index = new int[ngpown];
-    int *indinv = new int[ncouls+1];
-    memFootPrint += ngpown*sizeof(int);
-    memFootPrint += (ncouls+1)*sizeof(int);
-
-//Real and imaginary parts of achtemp calculated separately to avoid critical.
-    double *achtemp_re = new double[nend-nstart];
-    double *achtemp_im = new double[nend-nstart];
-    memFootPrint += 2*sizeof(double);
-
-    double wx_array[nend-nstart];
     GPUComplex achstemp;
+
+    double *achtemp_re = new double[3];
+    double *achtemp_im = new double[3];
                         
-    //Print Memory Foot print 
-    cout << "Memory Foot Print = " << memFootPrint / pow(1024,3) << " GBs" << endl;
+    double *vcoul = new double[ncouls];
+    double wx_array[3];
+    double occ=1.0;
+    bool flag_occ;
+    double achstemp_real = 0.00, achstemp_imag = 0.00;
+    cout << "Size of wtilde_array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+    cout << "Size of aqsntemp = " << (ncouls*number_bands*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+    cout << "Size of I_eps_array array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
 
 
    for(int i=0; i<number_bands; i++)
@@ -263,10 +254,7 @@ int main(int argc, char** argv)
     double achtemp_re0 = 0.00, achtemp_re1 = 0.00, achtemp_re2 = 0.00, \
         achtemp_im0 = 0.00, achtemp_im1 = 0.00, achtemp_im2 = 0.00;
 
-//    auto startKernelTimer = std::chrono::high_resolution_clock::now();
-    //Start the timer before the work begins.
-    timeval startTimer, endTimer;
-    gettimeofday(&startTimer, NULL);
+    auto startKernelTimer = std::chrono::high_resolution_clock::now();
 
 #pragma omp parallel for collapse(3)
        for(int n1 = 0; n1 < nvband; n1++)
@@ -299,12 +287,12 @@ int main(int argc, char** argv)
 
             GPUComplex wdiff, delw;
 
-            double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+            double achtemp_re_loc[3], achtemp_im_loc[3];
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
             for(int ig = 0; ig<ncouls; ++ig)
             {
-                for(int iw = nstart; iw < nend; ++iw)
+                for(int iw = 0; iw < 3; ++iw)
                 {
                     wdiff = doubleMinusGPUComplex(wx_array[iw], wtilde_array[my_igp*ncouls+ig]);
                     delw = GPUComplex_mult(GPUComplex_product(wtilde_array[my_igp*ncouls+ig] , GPUComplex_conj(wdiff)), 1/GPUComplex_real(GPUComplex_product(wdiff, GPUComplex_conj(wdiff)))); 
@@ -324,11 +312,7 @@ int main(int argc, char** argv)
         } //ngpown
     } // number-bands
 
-//std::chrono::duration<double> elapsedKernelTime = std::chrono::high_resolution_clock::now() - startKernelTimer;
-    //Time Taken
-    gettimeofday(&endTimer, NULL);
-    double elapsedTimer = (endTimer.tv_sec - startTimer.tv_sec) +1e-6*(endTimer.tv_usec - startTimer.tv_usec);
-
+    std::chrono::duration<double> elapsedKernelTime = std::chrono::high_resolution_clock::now() - startKernelTimer;
 
 
     achtemp_re[0] = achtemp_re0;
@@ -350,10 +334,9 @@ int main(int argc, char** argv)
         achtemp[iw].print();
     }
 
-//    std::chrono::duration<double> elapsed_totalTime = std::chrono::high_resolution_clock::now() - start_totalTime;
- //   cout << "********** Kernel Time Taken **********= " << elapsedKernelTime.count() << " secs" << endl;
-//    cout << "********** Total Time Taken **********= " << elapsed_totalTime.count() << " secs" << endl;
-    cout << "********** Kernel Time Taken **********= " << elapsedTimer << " secs" << endl;
+    std::chrono::duration<double> elapsed_totalTime = std::chrono::high_resolution_clock::now() - start_totalTime;
+    cout << "********** Kernel Time Taken **********= " << elapsedKernelTime.count() << " secs" << endl;
+    cout << "********** Total Time Taken **********= " << elapsed_totalTime.count() << " secs" << endl;
 
     free(acht_n1_loc);
     free(achtemp);
@@ -364,8 +347,6 @@ int main(int argc, char** argv)
     free(asxtemp);
     free(vcoul);
     free(ssx_array);
-    free(inv_igp_index);
-    free(indinv);
 
     return 0;
 }
