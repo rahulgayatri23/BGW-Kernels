@@ -106,12 +106,23 @@ void set_imag(double val)
     this->im = val;
 }
 
+    friend inline GPUComplex operator *(const GPUComplex &a, const GPUComplex &b) {
+        double x_this = a.re * b.re - a.im*b.im ;
+        double y_this = a.re * b.im + a.im*b.re ;
+        GPUComplex result(x_this, y_this);
+        return (result);
+    }
+
+    friend inline GPUComplex operator *(const GPUComplex &a, const double &b) {
+       GPUComplex result(a.re*b, a.im*b);
+       return result;
+    }
+
 
     friend inline GPUComplex GPUComplex_square(GPUComplex& src) ;
     friend inline GPUComplex GPUComplex_conj(const GPUComplex& src) ;
     friend inline GPUComplex GPUComplex_product(const GPUComplex& a, const GPUComplex& b) ;
     friend inline double GPUComplex_abs(const GPUComplex& src) ;
-    friend inline GPUComplex GPUComplex_mult(GPUComplex& a, double b, double c) ;
     friend inline GPUComplex GPUComplex_mult(const GPUComplex& a, double b) ;
     friend inline void GPUComplex_fma(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
     friend inline void GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
@@ -125,7 +136,6 @@ void set_imag(double val)
     inline GPUComplex GPUComplex_conj(const GPUComplex& src) ;
     inline GPUComplex GPUComplex_product(const GPUComplex& a, const GPUComplex& b) ;
     inline double GPUComplex_abs(const GPUComplex& src) ;
-    inline GPUComplex GPUComplex_mult(GPUComplex& a, double b, double c) ;
     inline GPUComplex GPUComplex_mult(const GPUComplex& a, double b) ;
     inline void GPUComplex_fma(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
     inline void GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
@@ -146,6 +156,7 @@ GPUComplex GPUComplex_square(GPUComplex& src) {
 
 /*
  * Return the conjugate of a complex number 
+ 1flop
  */
 GPUComplex GPUComplex_conj(const GPUComplex& src) {
 
@@ -160,6 +171,7 @@ return result;
 
 /*
  * Return the product of 2 complex numbers 
+ 6flops
  */
 inline GPUComplex GPUComplex_product(const GPUComplex& a, const GPUComplex& b) {
 
@@ -182,17 +194,8 @@ double GPUComplex_abs(const GPUComplex& src) {
 }
 
 /*
- *  result = a * b * c (a = complex ; b,c = double) 
- */
-GPUComplex GPUComplex_mult(GPUComplex& a, double b, double c) {
-
-    GPUComplex result(a.re * b * c, a.im * b * c);
-    return result;
-
-}
-
-/*
  * Return the complex number c = a * b (a is complex, b is double) 
+ 2flops
  */
 GPUComplex GPUComplex_mult(const GPUComplex& a, double b) {
 
@@ -215,7 +218,7 @@ void GPUComplex_fma(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) {
 }
 
 /*
- * Return the complex number a -= b * c  
+ * return the complex number a -= b * c  
  */
 void GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) {
     double re_this = b.re * c.re - b.im*c.im ;
@@ -228,6 +231,10 @@ void GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) {
 }
 
 
+/*
+ * return the complex number a -= b * c  
+ * 2 flops
+ */
 GPUComplex doubleMinusGPUComplex(const double &a, GPUComplex& src) {
     GPUComplex result(a - src.re, 0 - src.im);
     return result;
