@@ -134,8 +134,10 @@ void till_nvband(int number_bands, int nvband, int ngpown, int ncouls, GPUComple
     }
 }
 
-void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int n1, int *inv_igp_index, int *indinv, double *wx_array, GPUComplex *wtilde_array, GPUComplex *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im)
+static inline void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, GPUComplex *wtilde_array, GPUComplex *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im)
 {
+    for(int n1 = 0; n1<number_bands; ++n1) 
+    {
 #pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
     for(int my_igp=0; my_igp<ngpown; ++my_igp)
     {
@@ -166,6 +168,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int n1, int *inv
             achtemp_im[iw] += achtemp_im_loc[iw];
         }
     } //ngpown
+    }
 }
 
 int main(int argc, char** argv)
@@ -316,8 +319,40 @@ int main(int argc, char** argv)
         reduce_achstemp(n1, number_bands, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, indinv, ngpown, vcoul, numThreads);
 
     //main-loop with output on achtemp divide among achtemp_re && achtemp_im
+//    noflagOCC_solver(number_bands, ngpown, ncouls, inv_igp_index, indinv, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, vcoul, achtemp_re, achtemp_im);
     for(int n1 = 0; n1<number_bands; ++n1) 
-        noflagOCC_solver(number_bands, ngpown, ncouls, n1, inv_igp_index, indinv, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, vcoul, achtemp_re, achtemp_im);
+    {
+#pragma omp parallel for  collapse(2) default(shared) firstprivate(ngpown, ncouls, number_bands)
+        for(int my_igp=0; my_igp<ngpown; ++my_igp)
+        {
+            int indigp = inv_igp_index[my_igp];
+            int igp = indinv[indigp];
+
+            GPUComplex wdiff, delw;
+
+            double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+            for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+
+            for(int ig = 0; ig<ncouls; ++ig)
+            {
+                for(int iw = nstart; iw < nend; ++iw)
+                {
+                    wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig];
+                    delw = wtilde_array[my_igp*ncouls+ig] * GPUComplex_conj(wdiff) * (1/GPUComplex_real((wdiff * GPUComplex_conj(wdiff)))); 
+                    GPUComplex sch_array = (((GPUComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig]) * (delw * I_eps_array[my_igp*ncouls+ig])) * 0.5*vcoul[igp]);
+                    achtemp_re_loc[iw] += GPUComplex_real(sch_array);
+                    achtemp_im_loc[iw] += GPUComplex_imag(sch_array);
+                }
+            }
+            for(int iw = nstart; iw < nend; ++iw)
+            {
+#pragma omp atomic
+                achtemp_re[iw] += achtemp_re_loc[iw];
+#pragma omp atomic
+                achtemp_im[iw] += achtemp_im_loc[iw];
+            }
+        } //ngpown
+    }
 
     //Time Taken
     gettimeofday(&endTimer, NULL);

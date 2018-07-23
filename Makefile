@@ -1,13 +1,15 @@
 #EXE = gppKer_double.ex
 #SRC = gppKer_double.cpp 
-#EXE = gppKer_gpuComplex.ex
-#SRC = gppKer_gpuComplex.cpp 
-EXE = gppCustomComplex.ex
-SRC = gppCustomComplex.cpp 
+EXE = gppKer_gpuComplex.ex
+#SRC = gppKer_gpuComplexSummit.cpp 
+#SRC = gppKer_gpuComplexOptimized.cpp 
+SRC = gppKer_gpuComplex.cpp 
+#EXE = gppCustomComplex.ex
+#SRC = gppCustomComplex.cpp 
 
-#CXX = xlc++_r
+CXX = xlc++_r
 #CXX = g++
-CXX = CC
+#CXX = CC
 
 LINK = ${CXX}
 
