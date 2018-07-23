@@ -3,8 +3,8 @@ SRC = gppKer_gpuComplexXLCTarget.cpp
 #EXE = gppKer_gpuComplexGCCTarget.ex
 #SRC = gppKer_gpuComplexGCCTarget.cpp
 
-#CXX = xlc++
-CXX = CC 
+CXX = xlc++_r
+#CXX = CC 
 #CXX = g++
 #CXX = clang++
 
@@ -15,9 +15,7 @@ ifeq ($(CXX),g++)
 	LINKFLAGS=-fopenmp -foffload="-lm" -foffload=nvptx-none
 endif 
 
-ifeq ($(CXX),xlc++)
-#	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp
-#	LINKFLAGS=-qsmp 
+ifeq ($(CXX),xlc++_r)
 	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp=noauto:omp -qoffload #-Xptxas -v
 	LINKFLAGS=-qsmp=noauto:omp -qoffload 
 endif 
