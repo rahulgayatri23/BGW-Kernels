@@ -34,6 +34,13 @@ ifeq ($(CXX),icc)
 	LINKFLAGS=-qopenmp -dynamic
 endif 
 
+ifeq ($(CXX),CC)
+	CXXFLAGS=-O3 -std=c++11 -qopenmp -qopt-report=5 -qopenmp-offload -qno-openmp-offload
+	CXXFLAGS+=-xCORE_AVX2
+#	CXXFLAGS+=-xMIC_AVX512
+	LINKFLAGS=-qopenmp -dynamic
+endif 
+
 OBJ = $(SRC:.cpp=.o)
 
 $(EXE): $(OBJ)  
