@@ -3,9 +3,13 @@
 EXE = gppCustomComplex.ex
 SRC = gppCustomComplex.cpp 
 
-#CXX = xlc++_r
+#EXE = gppKer_gpuComplex.ex
+#SRC = gppKer_gpuComplexSummit.cpp 
+#SRC = gppKer_gpuComplexOptimized.cpp 
+
+CXX = xlc++_r
 #CXX = g++
-CXX = CC
+#CXX = CC
 
 LINK = ${CXX}
 

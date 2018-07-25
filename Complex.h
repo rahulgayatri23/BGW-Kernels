@@ -11,6 +11,7 @@
 #include <ctime>
 #include <chrono>
 #include <stdio.h>
+#include <sys/time.h>
 
 #define CACHE_LINE 64
 #define CACHE_ALIGN __declspec(align(CACHE_LINE)) 
@@ -117,6 +118,17 @@ void set_imag(double val)
        GPUComplex result(a.re*b, a.im*b);
        return result;
     }
+
+    friend inline GPUComplex operator -(const double &a, GPUComplex& src) {
+        GPUComplex result(a - src.re, 0 - src.im);
+        return result;
+    }
+
+    friend inline GPUComplex operator +(const double &a, GPUComplex& src) {
+        GPUComplex result(a + src.re, src.im);
+        return result;
+    }
+
 
 
     friend inline GPUComplex GPUComplex_square(GPUComplex& src) ;
