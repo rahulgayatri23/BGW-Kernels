@@ -1,5 +1,7 @@
 #include "CustomComplex.h"
 
+/*Contains stride dimenion*/
+
 using namespace std;
 #define nstart 0
 #define nend 3
