@@ -13,10 +13,13 @@ Templated CustomComplex class that represents a complex class comprised of  any 
 #include <ctime>
 #include <stdio.h>
 #include <sys/time.h>
+#include <vector_types.h>
+#include <cuda_runtime_api.h>
+#include <cuda.h>
 
 template<class re, class im>
 
-class CustomComplex {
+class CustomComplex : public double2{
 
 #pragma omp declare target
     private : 
