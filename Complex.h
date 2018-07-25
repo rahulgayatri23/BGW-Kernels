@@ -17,6 +17,7 @@
 
 class GPUComplex {
 
+#pragma omp declare target
     private : 
     double re;
     double im;
@@ -119,6 +120,8 @@ void set_imag(double val)
     friend inline GPUComplex doublePlusGPUComplex(double a, GPUComplex& src) ;
     friend inline double GPUComplex_real( const GPUComplex& src) ;
     friend inline double GPUComplex_imag( const GPUComplex& src) ;
+
+#pragma omp end declare target
 };
 
     inline GPUComplex GPUComplex_square(GPUComplex& src) ;

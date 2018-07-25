@@ -3,8 +3,8 @@ SRC = gppKer_gpuComplexXLCTarget.cpp
 #EXE = gppKer_gpuComplexGCCTarget.ex
 #SRC = gppKer_gpuComplexGCCTarget.cpp
 
-CXX = xlc++_r
-#CXX = CC 
+#CXX = xlc++_r
+CXX = CC 
 #CXX = g++
 #CXX = clang++
 
@@ -33,11 +33,11 @@ ifeq ($(CXX),icc)
 endif 
 
 ifeq ($(CXX),CC)
-	CXXFLAGS=-O3 -std=c++11 -qopenmp -qopt-report=5 -qopenmp-offload -qno-openmp-offload
-	CXXFLAGS+=-xCORE_AVX2
-#	CXXFLAGS+=-xMIC_AVX512
-	LINKFLAGS=-qopenmp -dynamic
-endif 
+    CXXFLAGS=-O3 -std=c++11 -qopenmp -qopt-report=5 -qopenmp-offload #-qno-openmp-offload
+    CXXFLAGS+=-xCORE-AVX2
+#	CXXFLAGS+=-xMIC-AVX512
+	LINKFLAGS=-qopenmp -qopenmp-offload #-dynamic
+#endif 
 
 OBJ = $(SRC:.cpp=.o)
 

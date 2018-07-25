@@ -9,18 +9,19 @@
 #include <ctime>
 #include <chrono>
 
-#include "GPUComplex.h"
+#include "Complex.h"
+//#include "GPUComplex.h"
 
 using namespace std;
 int debug = 0;
 
 #pragma omp declare target
 inline void flagOCC_solver(double wxt, GPUComplex *wtilde_array, int my_igp, int n1, GPUComplex *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, GPUComplex &ssxt, GPUComplex &scht,int ncouls, int igp, int number_bands, int ngpown);
-inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, GPUComplex  *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, GPUComplex achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads);
+inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, GPUComplex  *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, GPUComplex *achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads);
 #pragma omp end declare target
 
 
-inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, GPUComplex  *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, GPUComplex achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
+inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, GPUComplex  *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *I_eps_array, GPUComplex *achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
 {
     double to1 = 1e-6;
     GPUComplex schstemp(0.0, 0.0);;
@@ -61,7 +62,7 @@ inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int nc
             }
 
         schstemp = GPUComplex_mult(schstemp, vcoul[igp], 0.5);
-        achstemp += schstemp;
+        *achstemp += schstemp;
     }
 }
 
@@ -222,7 +223,7 @@ int main(int argc, char** argv)
     GPUComplex *wtilde_array = new GPUComplex[ngpown*ncouls];
     GPUComplex *ssx_array = new GPUComplex[3];
     GPUComplex *ssxa = new GPUComplex[ncouls];
-    GPUComplex achstemp;
+    GPUComplex *achstemp = new GPUComplex;
 
     double *achtemp_re = new double[3];
     double *achtemp_im = new double[3];
@@ -365,7 +366,7 @@ int main(int argc, char** argv)
     achtemp_im[2] = achtemp_im2;
 
     printf(" \n Final achstemp\n");
-    achstemp.print();
+    achstemp->print();
 
     printf("\n Final achtemp\n");
 

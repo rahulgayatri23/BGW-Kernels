@@ -9,7 +9,8 @@
 #include <ctime>
 #include <chrono>
 
-#include "GPUComplex.h"
+#include "Complex.h"
+//#include "GPUComplex.h"
 
 using namespace std;
 int debug = 0;
