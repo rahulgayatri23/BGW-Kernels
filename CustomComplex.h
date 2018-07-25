@@ -96,6 +96,7 @@ class CustomComplex {
         this->y = val;
     }
 
+// 6 flops
     template<class real, class imag>
     friend inline CustomComplex<real,imag> operator *(const CustomComplex<real,imag> &a, const CustomComplex<real,imag> &b) {
         real x_this = a.x * b.x - a.y*b.y ;
@@ -104,12 +105,14 @@ class CustomComplex {
         return (result);
     }
 
+//2 flops
     template<class real, class imag>
     friend inline CustomComplex<real,imag> operator *(const CustomComplex<real,imag> &a, const double &b) {
        CustomComplex<real,imag> result(a.x*b, a.y*b);
        return result;
     }
 
+//2 flops
     template<class real, class imag>
     friend inline CustomComplex<real,imag> operator -(const double &a, CustomComplex<real,imag>& src) {
         CustomComplex<real,imag> result(a - src.x, 0 - src.y);

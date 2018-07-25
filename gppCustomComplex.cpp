@@ -128,47 +128,99 @@ void till_nvband(int number_bands, int nvband, int ngpown, int ncouls, CustomCom
     }
 }
 
-void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int n1, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex<double,double> *wtilde_array, CustomComplex<double,double> *aqsmtemp, CustomComplex<double,double> *aqsntemp, CustomComplex<double,double> *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im)
+void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int n1, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex<double,double> *wtilde_array, CustomComplex<double,double> *aqsmtemp, CustomComplex<double,double> *aqsntemp, CustomComplex<double,double> *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im, int stride)
 {
-#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
-    for(int my_igp=0; my_igp<ngpown; ++my_igp)
+    if(stride == 0)
     {
-        int indigp = inv_igp_index[my_igp];
-        int igp = indinv[indigp];
-
-        CustomComplex<double,double> wdiff(0.00, 0.00), delw(0.00, 0.00);
-
-        double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
-        for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
-
-        for(int ig = 0; ig<ncouls; ++ig)
+#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
+        for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
+            int indigp = inv_igp_index[my_igp];
+            int igp = indinv[indigp];
+
+            CustomComplex<double,double> wdiff(0.00, 0.00), delw(0.00, 0.00);
+
+            double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+            for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+
+            for(int ig = 0; ig<ncouls; ++ig)
+            {
+                for(int iw = nstart; iw < nend; ++iw)
+                {
+                    wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig]; //2 flops
+
+                    //2 conj + 2 * product + 1 mult + 1 divide = 17
+                    delw = wtilde_array[my_igp*ncouls+ig] * CustomComplex_conj(wdiff) * (1/CustomComplex_real((wdiff * CustomComplex_conj(wdiff)))); 
+
+                    //1 conj + 3 product + 1 mult + 1 real-mult = 22
+                    CustomComplex<double,double> sch_array = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[igp];
+
+                    //2 flops
+                    achtemp_re_loc[iw] += CustomComplex_real(sch_array);
+                    achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
+                }
+            }
             for(int iw = nstart; iw < nend; ++iw)
             {
-                wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig];
-                delw = wtilde_array[my_igp*ncouls+ig] * CustomComplex_conj(wdiff) * (1/CustomComplex_real((wdiff * CustomComplex_conj(wdiff)))); 
-                CustomComplex<double,double> sch_array = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[igp];
-                achtemp_re_loc[iw] += CustomComplex_real(sch_array);
-                achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
+#pragma omp atomic
+                achtemp_re[iw] += achtemp_re_loc[iw];
+#pragma omp atomic
+                achtemp_im[iw] += achtemp_im_loc[iw];
             }
-        }
-        for(int iw = nstart; iw < nend; ++iw)
+        } //ngpown
+    }
+
+    else
+    {
+#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
+        for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
+            int indigp = inv_igp_index[my_igp];
+            int igp = indinv[indigp];
+
+            CustomComplex<double,double> wdiff(0.00, 0.00), delw(0.00, 0.00);
+
+            double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+            for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+
+            for(int igbeg = 0; igbeg<ncouls; igbeg+=stride)
+            {
+                for(int iw = nstart; iw < nend; ++iw)
+                {
+                    for(int ig=igbeg; ig<min(ncouls, igbeg+stride); ++ig)
+                    {
+                        wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig]; //2 flops
+
+                        //2 conj + 2 * product + 1 mult + 1 divide = 17
+                        delw = wtilde_array[my_igp*ncouls+ig] * CustomComplex_conj(wdiff) * (1/CustomComplex_real((wdiff * CustomComplex_conj(wdiff)))); 
+
+                        //1 conj + 3 product + 1 mult + 1 real-mult = 22
+                        CustomComplex<double,double> sch_array = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[igp];
+
+                        //2 flops
+                        achtemp_re_loc[iw] += CustomComplex_real(sch_array);
+                        achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
+                    }
+                }
+            }
+            for(int iw = nstart; iw < nend; ++iw)
+            {
 #pragma omp atomic
-            achtemp_re[iw] += achtemp_re_loc[iw];
+                achtemp_re[iw] += achtemp_re_loc[iw];
 #pragma omp atomic
-            achtemp_im[iw] += achtemp_im_loc[iw];
-        }
-    } //ngpown
+                achtemp_im[iw] += achtemp_im_loc[iw];
+            }
+        } //ngpown
+    }
 }
 
 int main(int argc, char** argv)
 {
 
-    if (argc != 5)
+    if (argc != 6)
     {
         std::cout << "The correct form of input is : " << endl;
-        std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <nodes_per_mpi_group> " << endl;
+        std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <nodes_per_mpi_group> <stride> " << endl;
         exit (0);
     }
 
@@ -179,6 +231,7 @@ int main(int argc, char** argv)
     const int nodes_per_group = atoi(argv[4]);
     const int npes = 1; 
     const int ngpown = ncouls / (nodes_per_group * npes); 
+    const int stride = atoi(argv[5]);
 
 //Constants that will be used later
     const double e_lk = 10;
@@ -210,10 +263,7 @@ int main(int argc, char** argv)
         << "\t ngpown = " << ngpown \
         << "\t nend = " << nend \
         << "\t nstart = " << nstart \
-        << "\t gamma = " << gamma \
-        << "\t sexcut = " << sexcut \
-        << "\t limitone = " << limitone \
-        << "\t limittwo = " << limittwo << endl;
+        << "\t stride = " << stride << endl;
    
     CustomComplex<double,double> expr0(0.00, 0.00);
     CustomComplex<double,double> expr(0.5, 0.5);
@@ -249,7 +299,7 @@ int main(int argc, char** argv)
 //Real and imaginary parts of achtemp calculated separately to avoid critical.
     double *achtemp_re = new double[nend-nstart];
     double *achtemp_im = new double[nend-nstart];
-    memFootPrint += 2*sizeof(double);
+    memFootPrint += 2*(nend-nstart)*sizeof(double);
 
     double wx_array[nend-nstart];
     CustomComplex<double,double> achstemp;
@@ -311,7 +361,7 @@ int main(int argc, char** argv)
 
     //main-loop with output on achtemp divide among achtemp_re && achtemp_im
     for(int n1 = 0; n1<number_bands; ++n1) 
-        noflagOCC_solver(number_bands, ngpown, ncouls, n1, inv_igp_index, indinv, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, vcoul, achtemp_re, achtemp_im);
+        noflagOCC_solver(number_bands, ngpown, ncouls, n1, inv_igp_index, indinv, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, vcoul, achtemp_re, achtemp_im, stride);
 
     //Time Taken
     gettimeofday(&endTimer, NULL);
@@ -326,8 +376,9 @@ int main(int argc, char** argv)
     {
         CustomComplex<double,double> tmp(achtemp_re[iw], achtemp_im[iw]);
         achtemp[iw] = tmp;
-        achtemp[iw].print();
+//        achtemp[iw].print();
     }
+        achtemp[0].print();
 
     cout << "********** Kernel Time Taken **********= " << elapsedTimer << " secs" << endl;
 
