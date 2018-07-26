@@ -54,7 +54,7 @@ inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int nc
                 }
             }
 
-        schstemp = GPUComplex_mult(schstemp, vcoul[igp], 0.5);
+        schstemp = GPUComplex_mult(schstemp, vcoul[igp]* 0.5);
         achstemp += schstemp;
     }
 }
@@ -98,7 +98,7 @@ inline void flagOCC_solver(double wxt, GPUComplex *wtilde_array, int my_igp, int
             double cden = std::pow(wxt,2);
             rden = std::pow(cden,2);
             rden = 1.00 / rden;
-            ssx = GPUComplex_mult(Omega2 , cden , rden);
+            ssx = GPUComplex_mult(Omega2 , cden * rden);
         }
         else if (delwr > to1)
         {
@@ -258,7 +258,7 @@ int main(int argc, char** argv)
                     GPUComplex ssxt(0.00, 0.00);
                     GPUComplex scht(0.00, 0.00);
                     flagOCC_solver(wx_array[iw], wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, number_bands, ngpown);
-                    asxtemp[iw] += GPUComplex_mult(ssxt, occ , vcoul[igp]);
+                    asxtemp[iw] += GPUComplex_mult(ssxt, occ * vcoul[igp]);
               }
             }
        }
