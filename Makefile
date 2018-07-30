@@ -4,7 +4,7 @@ EXE = gppCustomComplex.ex
 SRC = gppCustomComplex.cpp 
 
 #EXE = gppKer_gpuComplex.ex
-#SRC = gppKer_gpuComplexSummit.cpp 
+#SRC = gppKer_gpuComplex.cpp 
 #SRC = gppKer_gpuComplexOptimized.cpp 
 
 CXX = xlc++_r

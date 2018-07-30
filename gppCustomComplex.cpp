@@ -135,61 +135,21 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int n1, int *inv
     if(stride == 0)
     {
 #pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
-        for(int my_igp=0; my_igp<ngpown; ++my_igp)
+        for(int n1 = 0; n1<number_bands; ++n1) 
         {
-            int indigp = inv_igp_index[my_igp];
-            int igp = indinv[indigp];
-
-            CustomComplex<double,double> wdiff(0.00, 0.00), delw(0.00, 0.00);
-
-            double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
-            for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
-
-            for(int ig = 0; ig<ncouls; ++ig)
+            for(int my_igp=0; my_igp<ngpown; ++my_igp)
             {
-                for(int iw = nstart; iw < nend; ++iw)
+                int indigp = inv_igp_index[my_igp];
+                int igp = indinv[indigp];
+
+                CustomComplex<double,double> wdiff(0.00, 0.00), delw(0.00, 0.00);
+
+                double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+                for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+
+                for(int ig = 0; ig<ncouls; ++ig)
                 {
-                    wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig]; //2 flops
-
-                    //2 conj + 2 * product + 1 mult + 1 divide = 17
-                    delw = wtilde_array[my_igp*ncouls+ig] * CustomComplex_conj(wdiff) * (1/CustomComplex_real((wdiff * CustomComplex_conj(wdiff)))); 
-
-                    //1 conj + 3 product + 1 mult + 1 real-mult = 22
-                    CustomComplex<double,double> sch_array = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[igp];
-
-                    //2 flops
-                    achtemp_re_loc[iw] += CustomComplex_real(sch_array);
-                    achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
-                }
-            }
-            for(int iw = nstart; iw < nend; ++iw)
-            {
-#pragma omp atomic
-                achtemp_re[iw] += achtemp_re_loc[iw];
-#pragma omp atomic
-                achtemp_im[iw] += achtemp_im_loc[iw];
-            }
-        } //ngpown
-    }
-
-    else
-    {
-#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
-        for(int my_igp=0; my_igp<ngpown; ++my_igp)
-        {
-            int indigp = inv_igp_index[my_igp];
-            int igp = indinv[indigp];
-
-            CustomComplex<double,double> wdiff(0.00, 0.00), delw(0.00, 0.00);
-
-            double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
-            for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
-
-            for(int igbeg = 0; igbeg<ncouls; igbeg+=stride)
-            {
-                for(int iw = nstart; iw < nend; ++iw)
-                {
-                    for(int ig=igbeg; ig<min(ncouls, igbeg+stride); ++ig)
+                    for(int iw = nstart; iw < nend; ++iw)
                     {
                         wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig]; //2 flops
 
@@ -204,16 +164,62 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int n1, int *inv
                         achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
                     }
                 }
-            }
-            for(int iw = nstart; iw < nend; ++iw)
+                for(int iw = nstart; iw < nend; ++iw)
+                {
+#pragma omp atomic
+                    achtemp_re[iw] += achtemp_re_loc[iw];
+#pragma omp atomic
+                    achtemp_im[iw] += achtemp_im_loc[iw];
+                }
+            } //ngpown
+        } //number_bands
+    } //if-loop
+
+    else
+    {
+        for(int n1 = 0; n1<number_bands; ++n1) 
+        {
+#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
+            for(int my_igp=0; my_igp<ngpown; ++my_igp)
             {
+                int indigp = inv_igp_index[my_igp];
+                int igp = indinv[indigp];
+
+                CustomComplex<double,double> wdiff(0.00, 0.00), delw(0.00, 0.00);
+
+                double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
+                for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+
+                for(int igbeg = 0; igbeg<ncouls; igbeg+=stride)
+                {
+                    for(int iw = nstart; iw < nend; ++iw)
+                    {
+                        for(int ig=igbeg; ig<min(ncouls, igbeg+stride); ++ig)
+                        {
+                            wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig]; //2 flops
+
+                            //2 conj + 2 * product + 1 mult + 1 divide = 17
+                            delw = wtilde_array[my_igp*ncouls+ig] * CustomComplex_conj(wdiff) * (1/CustomComplex_real((wdiff * CustomComplex_conj(wdiff)))); 
+
+                            //1 conj + 3 product + 1 mult + 1 real-mult = 22
+                            CustomComplex<double,double> sch_array = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[igp];
+
+                            //2 flops
+                            achtemp_re_loc[iw] += CustomComplex_real(sch_array);
+                            achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
+                        }
+                    }
+                }
+                for(int iw = nstart; iw < nend; ++iw)
+                {
 #pragma omp atomic
-                achtemp_re[iw] += achtemp_re_loc[iw];
+                    achtemp_re[iw] += achtemp_re_loc[iw];
 #pragma omp atomic
-                achtemp_im[iw] += achtemp_im_loc[iw];
-            }
-        } //ngpown
-    }
+                    achtemp_im[iw] += achtemp_im_loc[iw];
+                }
+            } //ngpown
+        } //number_bands
+    } //else
 }
 
 int main(int argc, char** argv)
