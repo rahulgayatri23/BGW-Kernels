@@ -16,7 +16,7 @@ LINK = ${CXX}
 ifeq ($(CXX),CC)
 ##Intel compiler flag
 	CXXFLAGS= -g -O3 -qopenmp -qopt-report=5 -std=c++11
-    CXXFLAGS+=-fma #Fused multiply and add
+    CXXFLAGS+=-no-fma #Fused multiply and add
 #    CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DLIKWID_PERFMON
 #    CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DUSE_VTUNE -I${VTUNE_AMPLIFIER_XE_2018_DIR}/include -DLIKWID_PERFMON
     #CXXFLAGS+=-xCORE-AVX2
