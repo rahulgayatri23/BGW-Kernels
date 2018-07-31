@@ -1,9 +1,11 @@
-EXE = gppKer_gpuComplexXLCTarget.ex
-SRC = gppKer_gpuComplexXLCTarget.cpp
+#EXE = gppKer_gpuComplexXLCTarget.ex
+#SRC = gppKer_gpuComplexXLCTarget.cpp
 #EXE = gppKer_gpuComplexGCCTarget.ex
 #SRC = gppKer_gpuComplexGCCTarget.cpp
 #EXE = gppCustomComplex.ex
 #SRC = gppCustomComplex.cpp
+EXE = testClass.ex
+SRC = testClass.cpp
 
 CXX = xlc++_r
 #CXX = CC 
