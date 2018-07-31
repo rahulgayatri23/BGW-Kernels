@@ -13,13 +13,10 @@ Templated CustomComplex class that represents a complex class comprised of  any 
 #include <ctime>
 #include <stdio.h>
 #include <sys/time.h>
-#include <vector_types.h>
-#include <cuda_runtime_api.h>
-#include <cuda.h>
 
 template<class re, class im>
 
-class CustomComplex : public double2{
+class CustomComplex {
 
 #pragma omp declare target
     private : 
@@ -99,7 +96,9 @@ class CustomComplex : public double2{
     {
         this->y = val;
     }
+#pragma omp end declare target
 
+#pragma omp declare target
 // 6 flops
     template<class real, class imag>
     friend inline CustomComplex<real,imag> operator *(const CustomComplex<real,imag> &a, const CustomComplex<real,imag> &b) {
@@ -140,7 +139,6 @@ class CustomComplex : public double2{
 
     template<class real, class imag>
     friend inline double CustomComplex_imag( const CustomComplex<real,imag>& src) ;
-
 #pragma omp end declare target
 };
 
