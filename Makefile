@@ -3,7 +3,6 @@
 EXE = gppCustomComplex.ex
 SRC = gppCustomComplex.cpp 
 
-
 #CXX = xlc++_r
 #CXX = g++
 CXX = CC
