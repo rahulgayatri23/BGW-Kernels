@@ -6,11 +6,12 @@
 #include <cmath>
 #include <omp.h>
 #include <ctime>
-#include <chrono>
+#include <sys/time.h>
+#include <ittnotify.h>
 
 using namespace std;
 #define nstart 0
-#define nend 1
+#define nend 6
 
 inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, double  *aqsmtemp, double *aqsntemp, double *I_eps_array, double achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
 {
@@ -142,7 +143,7 @@ void noflagOCC_solver(int *inv_igp_index, int *indinv, double *wx_array, double 
             for(int iw = nstart; iw < nend; ++iw)
             {
                 double wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig]; //1 flops
-                double delw = wtilde_array[my_igp*ncouls+ig] * wdiff * 1/(wdiff * wdiff); //4 ops 
+                double delw = wtilde_array[my_igp*ncouls+ig] * wdiff * 1*(wdiff * wdiff); //4 ops 
                 double sch_array = aqsmtemp[n1*ncouls+igp] * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[ig]; //5 ops
                 achtemp_loc[iw] += sch_array; // 1 op
             }
@@ -165,8 +166,6 @@ int main(int argc, char** argv)
         std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <nodes_per_mpi_group> " << endl;
         exit (0);
     }
-    auto start_totalTime = std::chrono::high_resolution_clock::now();
-
     int number_bands = atoi(argv[1]);
     int nvband = atoi(argv[2]);
     int ncouls = atoi(argv[3]);
@@ -277,7 +276,9 @@ int main(int argc, char** argv)
             if(wx_array[iw] < to1) wx_array[iw] = to1;
         }
 
-    auto startKernelTimer = std::chrono::high_resolution_clock::now();
+    //Start the timer before the work begins.
+    timeval startTimer, endTimer;
+    gettimeofday(&startTimer, NULL);
 
     flagOCC_solver(inv_igp_index, indinv, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, nvband, ncouls, number_bands, ngpown, asxtemp);
 
@@ -285,10 +286,16 @@ int main(int argc, char** argv)
     for(int n1 = 0; n1<number_bands; ++n1) 
         reduce_achstemp(n1, number_bands, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, indinv, ngpown, vcoul, numThreads);
 
+    __SSC_MARK(0x111);
+    __itt_resume();
     for(int n1 = 0; n1<number_bands; ++n1) 
         noflagOCC_solver(inv_igp_index, indinv, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, vcoul, n1, ngpown, ncouls, achtemp);
+    __itt_pause();
+    __SSC_MARK(0x222);
 
-    std::chrono::duration<double> elapsedKernelTime = std::chrono::high_resolution_clock::now() - startKernelTimer;
+    //Time Taken
+    gettimeofday(&endTimer, NULL);
+    double elapsedTimer = (endTimer.tv_sec - startTimer.tv_sec) +1e-6*(endTimer.tv_usec - startTimer.tv_usec);
 
     printf(" \n Final achstemp\n");
     cout << "achstemp = " << achstemp << endl;
@@ -296,9 +303,7 @@ int main(int argc, char** argv)
     printf("\n Final achtemp\n");
     cout << "achtemp[0] = " << achtemp[0] << endl;
 
-    std::chrono::duration<double> elapsed_totalTime = std::chrono::high_resolution_clock::now() - start_totalTime;
-    cout << "********** Kernel Time Taken **********= " << elapsedKernelTime.count() << " secs" << endl;
-    cout << "********** Total Time Taken **********= " << elapsed_totalTime.count() << " secs" << endl;
+    cout << "********** Kernel Time Taken **********= " << elapsedTimer << " secs" << endl;
 
     free(acht_n1_loc);
     free(achtemp);

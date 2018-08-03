@@ -1,10 +1,11 @@
 #include "CustomComplex.h"
+//#include <ittnotify.h>
 
 /*Contains stride dimenion*/
 
 using namespace std;
 #define nstart 0
-#define nend 1
+#define nend 3
 
 inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, CustomComplex<double,double>  *aqsmtemp, CustomComplex<double,double> *aqsntemp, CustomComplex<double,double> *I_eps_array, CustomComplex<double,double> achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
 {
@@ -134,6 +135,8 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 {
     if(stride == 0)
     {
+//        __SSC_MARK(0x111);
+//        __itt_resume();
 #pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
         for(int n1 = 0; n1<number_bands; ++n1) 
         {
@@ -173,6 +176,8 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
                 }
             } //ngpown
         } //number_bands
+//        __itt_pause();
+//        __SSC_MARK(0x222);
     }
 
     else
