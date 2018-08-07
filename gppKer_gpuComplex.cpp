@@ -153,39 +153,32 @@ void gppKernelCPU( GPUComplex *wtilde_array, GPUComplex *aqsntemp, GPUComplex *I
 int main(int argc, char** argv)
 {
 
-    if (argc != 5)
+    if (argc != 6)
     {
         std::cout << "The correct form of input is : " << endl;
-        std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <nodes_per_mpi_group> " << endl;
+        std::cout << " ./a.out <number_bands> <number_valence_bands> <number_plane_waves> <nodes_per_mpi_group> <stride> " << endl;
         exit (0);
     }
 
     printf("********Executing Cuda version of the Kernel*********\n");
 
     auto start_totalTime = std::chrono::high_resolution_clock::now();
-    int number_bands = atoi(argv[1]);
-    int nvband = atoi(argv[2]);
-    int ncouls = atoi(argv[3]);
-    int nodes_per_group = atoi(argv[4]);
-
-    int npes = 1; //Represents the number of ranks per node
-    int ngpown = ncouls / (nodes_per_group * npes); //Number of gvectors per mpi task
-
-    double e_lk = 10;
-    double dw = 1;
-    int nstart = 0, nend = 3;
-
-    int *inv_igp_index = new int[ngpown];
-    int *indinv = new int[ncouls+1];
-
+    const int number_bands = atoi(argv[1]);
+    const int nvband = atoi(argv[2]);
+    const int ncouls = atoi(argv[3]);
+    const int nodes_per_group = atoi(argv[4]);
+    const int stride = atoi(argv[5]);
+    const int npes = 1; 
+    const int ngpown = ncouls / (nodes_per_group * npes); 
+    const double e_lk = 10;
+    const double dw = 1;
 
     double to1 = 1e-6, \
     gamma = 0.5, \
     sexcut = 4.0;
     double limitone = 1.0/(to1*4.0), \
     limittwo = pow(0.5,2);
-
-    double e_n1kq= 6.0; //This in the fortran code is derived through the double dimenrsion array ekq whose 2nd dimension is 1 and all the elements in the array have the same value
+    const double e_n1kq= 6.0; 
 
     //Printing out the params passed.
     std::cout << "number_bands = " << number_bands \
@@ -207,22 +200,25 @@ int main(int argc, char** argv)
     GPUComplex expr0(0.00, 0.00);
     GPUComplex expr(0.5, 0.5);
 
+    int *inv_igp_index = new int[ngpown];
+    int *indinv = new int[ncouls+1];
+
     GPUComplex *acht_n1_loc = new GPUComplex[number_bands];
-    GPUComplex *achtemp = new GPUComplex[nend-nstart];
+    GPUComplex *achtemp = new GPUComplex[(nend-nstart)];
     GPUComplex *aqsmtemp = new GPUComplex[number_bands*ncouls];
     GPUComplex *aqsntemp = new GPUComplex[number_bands*ncouls];
     GPUComplex *I_eps_array = new GPUComplex[ngpown*ncouls];
     GPUComplex *wtilde_array = new GPUComplex[ngpown*ncouls];
-    GPUComplex *ssx_array = new GPUComplex[3];
+    GPUComplex *ssx_array = new GPUComplex[(nend-nstart)];
     GPUComplex *ssxa = new GPUComplex[ncouls];
     GPUComplex achstemp;
 
-    double *achtemp_re = new double[3];
-    double *wx_array = new double[3];
-    double *achtemp_im = new double[3];
+    double *achtemp_re = new double[(nend-nstart)];
+    double *wx_array = new double[(nend-nstart)];
+    double *achtemp_im = new double[(nend-nstart)];
     double *vcoul = new double[ncouls];
 
-    printf("Executing CUDA version of the Kernel\n");
+    printf("Executing CUDA version of the Kernel stride = %d\n", stride);
 //Data Structures on Device
     GPUComplex *d_wtilde_array, *d_aqsntemp, *d_aqsmtemp, *d_I_eps_array, *d_asxtemp;
     double *d_achtemp_re, *d_achtemp_im, *d_vcoul, *d_wx_array;
@@ -232,21 +228,21 @@ int main(int argc, char** argv)
     CudaSafeCall(cudaMalloc((void**) &d_I_eps_array, ngpown*ncouls*sizeof(GPUComplex)));
     CudaSafeCall(cudaMalloc((void**) &d_aqsntemp, number_bands*ncouls*sizeof(GPUComplex)));
     CudaSafeCall(cudaMalloc((void**) &d_aqsmtemp, number_bands*ncouls*sizeof(GPUComplex)));
-    CudaSafeCall(cudaMalloc((void**) &d_achtemp_re, 3*sizeof(double)));
-    CudaSafeCall(cudaMalloc((void**) &d_achtemp_im, 3*sizeof(double)));
-    CudaSafeCall(cudaMalloc((void**) &d_wx_array, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_achtemp_re, (nend-nstart)*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_achtemp_im, (nend-nstart)*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_wx_array, (nend-nstart)*sizeof(double)));
     CudaSafeCall(cudaMalloc((void**) &d_vcoul, ncouls*sizeof(double)));
     CudaSafeCall(cudaMalloc((void**) &d_indinv, (ncouls+1)*sizeof(int)));
     CudaSafeCall(cudaMalloc((void**) &d_inv_igp_index, ngpown*sizeof(int)));
-    CudaSafeCall(cudaMalloc((void**) &d_asxtemp, 3*sizeof(double)));
+    CudaSafeCall(cudaMalloc((void**) &d_asxtemp, (nend-nstart)*sizeof(double)));
 
     double occ=1.0;
     bool flag_occ;
     double achstemp_real = 0.00, achstemp_imag = 0.00;
-    cout << "Size of wtilde_array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
-    cout << "Size of aqsntemp = " << (ncouls*number_bands*2.0*8) / pow(1024,2) << " Mbytes" << endl;
-    cout << "Size of I_eps_array array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
-
+//    cout << "Size of wtilde_array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+//    cout << "Size of aqsntemp = " << (ncouls*number_bands*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+//    cout << "Size of I_eps_array array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
+//
    for(int i=0; i<number_bands; i++)
        for(int j=0; j<ncouls; j++)
        {
@@ -284,68 +280,60 @@ int main(int argc, char** argv)
     }
 
     auto start_withDataMovement = std::chrono::high_resolution_clock::now();
-    uintmax_t mem_alloc = 0.00;
+    float mem_alloc = 0.00;
 
 //Start memcpyToDevice 
-    printf("Sizeof(GPUComplex) = %u\n", sizeof(GPUComplex));
 
     CudaSafeCall(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
-    printf("Sizeof(wtilde_array) = %u\n", ngpown*ncouls*sizeof(GPUComplex));
 
     CudaSafeCall(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
-    printf("Sizeof(I_eps_array) = %u\n", ngpown*ncouls*sizeof(GPUComplex));
     mem_alloc += 2*ngpown*ncouls*sizeof(GPUComplex);
 
     CudaSafeCall(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
-    printf("Sizeof(aqsmtemp) = %u\n", number_bands*ncouls*sizeof(GPUComplex));
 
     CudaSafeCall(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(GPUComplex), cudaMemcpyHostToDevice));
-    printf("Sizeof(aqsntemp) = %u\n", number_bands*ncouls*sizeof(GPUComplex));
     mem_alloc += 2*number_bands*ncouls*sizeof(GPUComplex);
 
     CudaSafeCall(cudaMemcpy(d_indinv, indinv, (ncouls+1)*sizeof(int), cudaMemcpyHostToDevice));
-    printf("Sizeof(vcoul) = %u\n", ncouls*sizeof(double));
     mem_alloc += ncouls*sizeof(int);
 
     CudaSafeCall(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice));
-    printf("Sizeof(inv_igp_index) = %u\n", ngpown*sizeof(int));
     mem_alloc += ngpown*sizeof(int);
 
     CudaSafeCall(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice));
-    printf("Sizeof(vcoul) = %u\n", ncouls*sizeof(double));
     mem_alloc += ncouls*sizeof(double);
 
-    CudaSafeCall(cudaMemcpy(d_wx_array, wx_array, 3*sizeof(double), cudaMemcpyHostToDevice));
-    printf("Sizeof(wx_array) = %u\n", 3*sizeof(double));
+    CudaSafeCall(cudaMemcpy(d_wx_array, wx_array, (nend-nstart)*sizeof(double), cudaMemcpyHostToDevice));
 
-    CudaSafeCall(cudaMemcpy(d_achtemp_re, achtemp_re, 3*sizeof(double), cudaMemcpyHostToDevice));
-    printf("Sizeof(achtemp_re) = %u\n", 3*sizeof(double));
+    CudaSafeCall(cudaMemcpy(d_achtemp_re, achtemp_re, (nend-nstart)*sizeof(double), cudaMemcpyHostToDevice));
 
-    CudaSafeCall(cudaMemcpy(d_achtemp_im, achtemp_im, 3*sizeof(double), cudaMemcpyHostToDevice));
-    printf("Sizeof(achtemp_im) = %u\n", 3*sizeof(double));
+    CudaSafeCall(cudaMemcpy(d_achtemp_im, achtemp_im, (nend-nstart)*sizeof(double), cudaMemcpyHostToDevice));
     mem_alloc += 3*3*sizeof(double);
 
-    printf("mem_alloc = %ju\n", mem_alloc);
+    mem_alloc /= (1024*1024*1024);
+
+    printf("mem_alloc = %f GBs\n", mem_alloc);
 //Start Kernel 
     auto start_kernelTiming = std::chrono::high_resolution_clock::now();
 
-    till_nvbandKernel(d_aqsmtemp, d_aqsntemp, d_asxtemp, d_inv_igp_index, d_indinv, d_wtilde_array, d_wx_array, d_I_eps_array, ncouls, nvband, ngpown, nstart, nend, d_vcoul);
+    till_nvbandKernel(d_aqsmtemp, d_aqsntemp, d_asxtemp, d_inv_igp_index, d_indinv, d_wtilde_array, d_wx_array, d_I_eps_array, ncouls, nvband, ngpown, d_vcoul);
 
-    gppKernelGPU( d_wtilde_array, d_aqsntemp, d_aqsmtemp, d_I_eps_array, ncouls, ngpown, number_bands, d_wx_array, d_achtemp_re, d_achtemp_im, d_vcoul, nstart, nend, d_indinv, d_inv_igp_index);
+    gppKernelGPU( d_wtilde_array, d_aqsntemp, d_aqsmtemp, d_I_eps_array, ncouls, ngpown, number_bands, d_wx_array, d_achtemp_re, d_achtemp_im, d_vcoul, d_indinv, d_inv_igp_index, stride);
 
     cudaDeviceSynchronize();
     std::chrono::duration<double> elapsed_kernelTiming = std::chrono::high_resolution_clock::now() - start_kernelTiming;
 
 //Start memcpyToHost 
-    CudaSafeCall(cudaMemcpy(achtemp_im, d_achtemp_im, 3*sizeof(double), cudaMemcpyDeviceToHost));
-    CudaSafeCall(cudaMemcpy(achtemp_re, d_achtemp_re, 3*sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(achtemp_im, d_achtemp_im, (nend-nstart)*sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(achtemp_re, d_achtemp_re, (nend-nstart)*sizeof(double), cudaMemcpyDeviceToHost));
 
     printf(" \n Cuda Kernel Final achtemp\n");
     for(int iw=nstart; iw<nend; ++iw)
     {
         achtemp[iw] = GPUComplex(achtemp_re[iw], achtemp_im[iw]);
-        achtemp[iw].print();
+//        achtemp[iw].print();
     }
+    achtemp[0].print();
 
     std::chrono::duration<double> elapsed_totalTime = std::chrono::high_resolution_clock::now() - start_totalTime;
 

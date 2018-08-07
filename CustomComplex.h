@@ -18,6 +18,11 @@ Templated CustomComplex class that represents a complex class comprised of  any 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
+#define nstart 0
+#define nend 3
+
+#define singleDim 1
+
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
 inline void __cudaSafeCall( cudaError err, const char *file, const int line )
@@ -58,13 +63,12 @@ inline void __cudaCheckError( const char *file, const int line )
 }
 
 
-
-template<class re, class im>
-class CustomComplex {
+class CustomComplex : public double2{
 
     private : 
-    re x;
-    im y;
+    //The x and y are now available from the double2 data type
+//    re x;
+//    im y;
 
     public:
     explicit CustomComplex () {
@@ -141,58 +145,49 @@ __host__ __device__ CustomComplex& operator ~() {
     }
 
 // 6 flops
-    template<class real, class imag>
-__host__ __device__ friend inline CustomComplex<real,imag> operator *(const CustomComplex<real,imag> &a, const CustomComplex<real,imag> &b) {
-        real x_this = a.x * b.x - a.y*b.y ;
-        imag y_this = a.x * b.y + a.y*b.x ;
-        CustomComplex<real,imag> result(x_this, y_this);
+__host__ __device__ friend inline CustomComplex operator *(const CustomComplex &a, const CustomComplex &b) {
+        double x_this = a.x * b.x - a.y*b.y ;
+        double y_this = a.x * b.y + a.y*b.x ;
+        CustomComplex result(x_this, y_this);
         return (result);
     }
 
 //2 flops
-    template<class real, class imag>
-    __host__ __device__ friend inline CustomComplex<real,imag> operator *(const CustomComplex<real,imag> &a, const double &b) {
-       CustomComplex<real,imag> result(a.x*b, a.y*b);
+    __host__ __device__ friend inline CustomComplex operator *(const CustomComplex &a, const double &b) {
+       CustomComplex result(a.x*b, a.y*b);
        return result;
     }
 
 //2 flops
-    template<class real, class imag>
-    __host__ __device__ friend inline CustomComplex<real,imag> operator -(const double &a, CustomComplex<real,imag>& src) {
-        CustomComplex<real,imag> result(a - src.x, 0 - src.y);
+    __host__ __device__ friend inline CustomComplex operator -(const double &a, CustomComplex& src) {
+        CustomComplex result(a - src.x, 0 - src.y);
         return result;
     }
 
-    template<class real, class imag>
-    __host__ __device__ friend inline CustomComplex<real,imag> operator +(const double &a, CustomComplex<real,imag>& src) {
-        CustomComplex<real,imag> result(a + src.x, src.y);
+    __host__ __device__ friend inline CustomComplex operator +(const double &a, CustomComplex& src) {
+        CustomComplex result(a + src.x, src.y);
         return result;
     }
 
-    template<class real, class imag>
-    __host__ __device__ friend inline CustomComplex<real,imag> CustomComplex_conj(const CustomComplex<real,imag>& src) ;
+    __host__ __device__ friend inline CustomComplex CustomComplex_conj(const CustomComplex& src) ;
 
-    template<class real, class imag>
-    __host__ __device__ friend inline double CustomComplex_abs(const CustomComplex<real,imag>& src) ;
+    __host__ __device__ friend inline double CustomComplex_abs(const CustomComplex& src) ;
 
-    template<class real, class imag>
-    __host__ __device__ friend inline double CustomComplex_real( const CustomComplex<real,imag>& src) ;
+    __host__ __device__ friend inline double CustomComplex_real( const CustomComplex& src) ;
 
-    template<class real, class imag>
-    __host__ __device__ friend inline double CustomComplex_imag( const CustomComplex<real,imag>& src) ;
+    __host__ __device__ friend inline double CustomComplex_imag( const CustomComplex& src) ;
 };
 
 /*
  * Return the conjugate of a complex number 
  1flop
  */
-template<class re, class im>
-inline CustomComplex<re, im> CustomComplex_conj(const CustomComplex<re,im>& src) {
+inline CustomComplex CustomComplex_conj(const CustomComplex& src) {
 
-    re re_this = src.x;
-    im im_this = -1 * src.y;
+    double re_this = src.x;
+    double im_this = -1 * src.y;
 
-    CustomComplex<re,im> result(re_this, im_this);
+    CustomComplex result(re_this, im_this);
     return result;
 
 }
@@ -200,31 +195,28 @@ inline CustomComplex<re, im> CustomComplex_conj(const CustomComplex<re,im>& src)
 /*
  * Return the absolute of a complex number 
  */
-template<class re, class im>
-inline double CustomComplex_abs(const CustomComplex<re,im>& src) {
-    re re_this = src.x * src.x;
-    im im_this = src.y * src.y;
+inline double CustomComplex_abs(const CustomComplex& src) {
+    double re_this = src.x * src.x;
+    double im_this = src.y * src.y;
 
-    re result = sqrt(re_this+im_this);
+    double result = sqrt(re_this+im_this);
     return result;
 }
 
 /*
  * Return the real part of a complex number 
  */
-template<class re, class im>
-inline double CustomComplex_real( const CustomComplex<re,im>& src) {
+inline double CustomComplex_real( const CustomComplex& src) {
     return src.x;
 }
 
 /*
  * Return the imaginary part of a complex number 
  */
-template<class re, class im>
-inline double CustomComplex_imag( const CustomComplex<re,im>& src) {
+inline double CustomComplex_imag( const CustomComplex& src) {
     return src.y;
 }
 
 //Cuda kernel declarations
-void d_noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex<double,double> *wtilde_array, CustomComplex<double,double> *aqsmtemp, CustomComplex<double,double> *aqsntemp, CustomComplex<double,double> *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im, int stride);
+void d_noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex *wtilde_array, CustomComplex *aqsmtemp, CustomComplex *aqsntemp, CustomComplex *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im, int stride);
 #endif

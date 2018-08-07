@@ -16,10 +16,13 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#define NumBandsKernel 1
+#define NumBandsKernel 0
 #define NgpownKernel 0
-#define NumBandsNgpownKernel 0
+#define NumBandsNgpownKernel 1
 #define NgpownNcoulsKernel 0
+
+#define nstart 0
+#define nend 6
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
@@ -300,8 +303,8 @@ double GPUComplex_imag( const GPUComplex& src) {
     return src.y;
 }
 
-void gppKernelGPU( GPUComplex *wtilde_array, GPUComplex *aqsntemp, GPUComplex* aqsmtemp, GPUComplex *I_eps_array, int ncouls, int ngpown, int number_bands, double* wx_array, double *achtemp_re, double *achtemp_im, double *vcoul, int nstart, int nend, int* indinv, int* inv_igp_index);
+void gppKernelGPU( GPUComplex *wtilde_array, GPUComplex *aqsntemp, GPUComplex* aqsmtemp, GPUComplex *I_eps_array, int ncouls, int ngpown, int number_bands, double* wx_array, double *achtemp_re, double *achtemp_im, double *vcoul, int* indinv, int* inv_igp_index, int stride);
 
-void till_nvbandKernel(GPUComplex *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *asxtemp, int *inv_igp_index, int *indinv, GPUComplex *wtilde_array, double *wx_array, GPUComplex *I_eps_array, int ncouls, int nvband, int ngpown, int nstart, int nend, double *d_vcoul);
+void till_nvbandKernel(GPUComplex *aqsmtemp, GPUComplex *aqsntemp, GPUComplex *asxtemp, int *inv_igp_index, int *indinv, GPUComplex *wtilde_array, double *wx_array, GPUComplex *I_eps_array, int ncouls, int nvband, int ngpown, double *d_vcoul);
 
 #endif
