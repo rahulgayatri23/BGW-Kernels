@@ -95,7 +95,7 @@ __device__ void d_print( const GPUComplex& a) {
 
 __device__ void ncoulsKernel(GPUComplex& mygpvar1, GPUComplex& wdiff, GPUComplex& aqsntemp_index, GPUComplex& wtilde_array_index, GPUComplex& I_eps_array_index, double vcoul_igp, double& achtemp_re_loc, double& achtemp_im_loc)
 {
-    double rden = 1/(wdiff.x*wdiff.x + wdiff.y*wdiff.y);
+    double rden = 1*(wdiff.x*wdiff.x + wdiff.y*wdiff.y);
 
     achtemp_re_loc += d_GPUComplex_product(d_GPUComplex_product(mygpvar1, aqsntemp_index),\
         d_GPUComplex_product(d_GPUComplex_mult(d_GPUComplex_product(wtilde_array_index, d_GPUComplex_conj(wdiff)), rden), I_eps_array_index)).x * 0.5 * vcoul_igp;
