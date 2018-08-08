@@ -22,7 +22,7 @@
 #define NgpownNcoulsKernel 0
 
 #define nstart 0
-#define nend 1
+#define nend 3
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
@@ -169,16 +169,16 @@ void set_imag(double val)
 
     
 //Device Functions 
-    friend __device__ const GPUComplex d_GPUComplex_square(GPUComplex& src) ;
-    friend __device__ const GPUComplex d_GPUComplex_conj(const GPUComplex& src) ;
-    friend __device__ const GPUComplex d_GPUComplex_product(const GPUComplex& a, const GPUComplex& b) ;
+    friend __device__ GPUComplex d_GPUComplex_square(GPUComplex& src) ;
+    friend __device__ GPUComplex d_GPUComplex_conj(const GPUComplex& src) ;
+    friend __device__ GPUComplex d_GPUComplex_product(const GPUComplex& a, const GPUComplex& b) ;
     friend __device__ double d_GPUComplex_abs(const GPUComplex& src) ;
-    friend __device__ const GPUComplex d_GPUComplex_mult(GPUComplex& a, double b, double c) ;
-    friend __device__ const GPUComplex d_GPUComplex_mult(const GPUComplex& a, double b) ;
+    friend __device__ GPUComplex d_GPUComplex_mult(GPUComplex& a, double b, double c) ;
+    friend __device__ GPUComplex d_GPUComplex_mult(const GPUComplex& a, double b) ;
     friend __device__ void d_GPUComplex_fma(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
     friend __device__ void d_GPUComplex_fms(GPUComplex& a, const GPUComplex& b, const GPUComplex& c) ;
     friend __device__ GPUComplex d_doubleMinusGPUComplex(const double &a, GPUComplex& src) ;
-    friend __device__ const GPUComplex d_doublePlusGPUComplex(double a, GPUComplex& src) ;
+    friend __device__ GPUComplex d_doublePlusGPUComplex(double a, GPUComplex& src) ;
     friend __device__ double d_GPUComplex_real( const GPUComplex& src) ;
     friend __device__ double d_GPUComplex_imag( const GPUComplex& src) ;
     friend __device__ void d_GPUComplex_plusEquals( GPUComplex& a, const GPUComplex & b); 

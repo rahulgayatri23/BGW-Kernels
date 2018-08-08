@@ -3,14 +3,14 @@
 /*
  * Return the square of a complex number 
  */
-__device__ const inline GPUComplex d_GPUComplex_square(GPUComplex& src) {
+__device__ inline GPUComplex d_GPUComplex_square(GPUComplex& src) {
     return GPUComplex(src.x*src.x - src.y*src.y, 2*src.x*src.y);
 }
 
 /*
  * Return the conjugate of a complex number 
  */
-__device__ const inline GPUComplex d_GPUComplex_conj(const GPUComplex& src) {
+__device__ inline GPUComplex d_GPUComplex_conj(const GPUComplex& src) {
 return GPUComplex(src.x, -src.y);
 }
 
@@ -18,7 +18,7 @@ return GPUComplex(src.x, -src.y);
 /*
  * Return the product of 2 complex numbers 
  */
-__device__ const inline GPUComplex d_GPUComplex_product(const GPUComplex& a, const GPUComplex& b) {
+__device__ inline GPUComplex d_GPUComplex_product(const GPUComplex& a, const GPUComplex& b) {
     return GPUComplex(a.x * b.x - a.y*b.y, a.x * b.y + a.y*b.x);
 }
 
@@ -33,14 +33,14 @@ __device__ inline double d_GPUComplex_abs(const GPUComplex& src) {
 /*
  *  result = a * b * c (a = complex ; b,c = double) 
  */
-__device__ const inline GPUComplex d_GPUComplex_mult(GPUComplex& a, double b, double c) {
+__device__ inline GPUComplex d_GPUComplex_mult(GPUComplex& a, double b, double c) {
     return GPUComplex(a.x * b * c, a.y * b * c);
 }
 
 /*
  * Return the complex number c = a * b (a is complex, b is double) 
  */
-__device__ const inline GPUComplex d_GPUComplex_mult(const GPUComplex& a, double b) {
+__device__ inline GPUComplex d_GPUComplex_mult(const GPUComplex& a, double b) {
    return GPUComplex(a.x*b, a.y*b);
 
 }
@@ -66,7 +66,7 @@ __device__ inline GPUComplex d_doubleMinusGPUComplex(const double &a, GPUComplex
     return GPUComplex(a-src.x, -src.y);
 }
 
-__device__ const inline GPUComplex d_doublePlusGPUComplex(double a, GPUComplex& src) {
+__device__ inline GPUComplex d_doublePlusGPUComplex(double a, GPUComplex& src) {
     return GPUComplex(a+src.x, src.y);
 }
 
@@ -95,7 +95,7 @@ __device__ void d_print( const GPUComplex& a) {
 
 __device__ void ncoulsKernel(GPUComplex& mygpvar1, GPUComplex& wdiff, GPUComplex& aqsntemp_index, GPUComplex& wtilde_array_index, GPUComplex& I_eps_array_index, double vcoul_igp, double& achtemp_re_loc, double& achtemp_im_loc)
 {
-    double rden = 1*(wdiff.x*wdiff.x + wdiff.y*wdiff.y);
+    double rden = 1/(wdiff.x*wdiff.x + wdiff.y*wdiff.y);
 
     achtemp_re_loc += d_GPUComplex_product(d_GPUComplex_product(mygpvar1, aqsntemp_index),\
         d_GPUComplex_product(d_GPUComplex_mult(d_GPUComplex_product(wtilde_array_index, d_GPUComplex_conj(wdiff)), rden), I_eps_array_index)).x * 0.5 * vcoul_igp;
