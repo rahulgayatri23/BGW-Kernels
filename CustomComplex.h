@@ -19,9 +19,12 @@ Templated CustomComplex class that represents a complex class comprised of  any 
 #include <cuda_runtime_api.h>
 
 #define nstart 0
-#define nend 3
+#define nend 1
 
-#define singleDim 1
+#define NumBandsKernel 0
+#define NgpownKernel 0
+#define NumBandsNgpownKernel 1
+#define NgpownNcoulsKernel 0
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
@@ -219,4 +222,9 @@ inline double CustomComplex_imag( const CustomComplex& src) {
 
 //Cuda kernel declarations
 void d_noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex *wtilde_array, CustomComplex *aqsmtemp, CustomComplex *aqsntemp, CustomComplex *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im, int stride);
+
+void gppKernelGPU( CustomComplex *wtilde_array, CustomComplex *aqsntemp, CustomComplex* aqsmtemp, CustomComplex *I_eps_array, int ncouls, int ngpown, int number_bands, double* wx_array, double *achtemp_re, double *achtemp_im, double *vcoul, int* indinv, int* inv_igp_index, int stride);
+
+void till_nvbandKernel(CustomComplex *aqsmtemp, CustomComplex *aqsntemp, CustomComplex *asxtemp, int *inv_igp_index, int *indinv, CustomComplex *wtilde_array, double *wx_array, CustomComplex *I_eps_array, int ncouls, int nvband, int ngpown, double *vcoul);
+
 #endif

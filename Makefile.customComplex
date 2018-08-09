@@ -1,6 +1,6 @@
 EXE = gppCustomComplex.ex
 SRC1 = gppCustomComplex.cpp 
-SRC2 = gppCuda.cu 
+SRC2 = gppCustomComplex_Cuda.cu 
 
 #CXX = xlc++
 #CXX = CC 
