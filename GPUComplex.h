@@ -18,7 +18,7 @@
 
 #define NumBandsKernel 0
 #define NgpownKernel 0
-#define NumBandsNgpownKernel 1
+#define NumBandsNgpownKernel 3
 #define NgpownNcoulsKernel 0
 
 #define nstart 0

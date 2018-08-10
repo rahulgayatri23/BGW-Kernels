@@ -343,9 +343,7 @@ __global__  void NumBandNgpown_kernel( GPUComplex *wtilde_array, GPUComplex *aqs
         double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
         int indigp = inv_igp_index[my_igp];
         int igp = indinv[indigp];
-        for(int iw = nstart; iw < nend; ++iw)
-        {
-            achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;
+        for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
             if(stride == 0)
             {
@@ -354,9 +352,12 @@ __global__  void NumBandNgpown_kernel( GPUComplex *wtilde_array, GPUComplex *aqs
                     int ig = x*numThreadsPerBlock + threadIdx.x;
                     if(ig < ncouls)
                     {
+                        for(int iw = nstart; iw < nend; ++iw)
+                        {
                         GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
                         GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
                         ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
+                        }
                     }
                 }
                 if(leftOverncouls)
@@ -364,9 +365,12 @@ __global__  void NumBandNgpown_kernel( GPUComplex *wtilde_array, GPUComplex *aqs
                     int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x;
                     if(ig < ncouls)
                     {
+                        for(int iw = nstart; iw < nend; ++iw)
+                        {
                         GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
                         GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
                         ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
+                       }
                     }
                 }
           }
@@ -379,9 +383,12 @@ __global__  void NumBandNgpown_kernel( GPUComplex *wtilde_array, GPUComplex *aqs
                           int ig = (x*numThreadsPerBlock + threadIdx.x) * stride + igmin ;
                           if(ig < ncouls)
                           {
+                            for(int iw = nstart; iw < nend; ++iw)
+                            {
                               GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
                               GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
                               ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
+                            }
                           }
                       }
                   }
@@ -392,17 +399,22 @@ __global__  void NumBandNgpown_kernel( GPUComplex *wtilde_array, GPUComplex *aqs
                           int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x*stride + igmin;
                           if(ig < ncouls)
                           {
+                            for(int iw = nstart; iw < nend; ++iw)
+                            {
                               GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
                               GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
                               ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
+                            }
                           }
                       }
                   }
               }
 
+            for(int iw = nstart; iw < nend; ++iw)
+            {
             atomicAdd(&achtemp_re[iw] , achtemp_re_loc[iw] );
             atomicAdd(&achtemp_im[iw] , achtemp_im_loc[iw] );
-        }
+            }
     }
 }
 
