@@ -345,76 +345,76 @@ __global__  void NumBandNgpown_kernel( GPUComplex *wtilde_array, GPUComplex *aqs
         int igp = indinv[indigp];
         for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
-            if(stride == 0)
-            {
-                for( int x = 0; x < loopOverncouls && threadIdx.x < numThreadsPerBlock ; ++x)
-                { 
-                    int ig = x*numThreadsPerBlock + threadIdx.x;
-                    if(ig < ncouls)
-                    {
-                        for(int iw = nstart; iw < nend; ++iw)
-                        {
-                        GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
-                        GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
-                        ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
-                        }
-                    }
-                }
-                if(leftOverncouls)
+        if(stride == 0)
+        {
+            for( int x = 0; x < loopOverncouls && threadIdx.x < numThreadsPerBlock ; ++x)
+            { 
+                int ig = x*numThreadsPerBlock + threadIdx.x;
+                if(ig < ncouls)
                 {
-                    int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x;
-                    if(ig < ncouls)
+                    for(int iw = nstart; iw < nend; ++iw)
                     {
-                        for(int iw = nstart; iw < nend; ++iw)
-                        {
                         GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
                         GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
                         ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
-                       }
                     }
                 }
-          }
-              else
-              {
-                  for(int igmin = 0; igmin < stride; ++igmin)
-                  { 
-                      for( int x = 0; x < loopOverncouls/stride && threadIdx.x < numThreadsPerBlock ; ++x)
-                      {
-                          int ig = (x*numThreadsPerBlock + threadIdx.x) * stride + igmin ;
-                          if(ig < ncouls)
-                          {
-                            for(int iw = nstart; iw < nend; ++iw)
-                            {
-                              GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
-                              GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
-                              ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
-                            }
-                          }
-                      }
-                  }
-                  if(leftOverncouls)
-                  {
-                      for(int igmin = 0; igmin < stride; ++igmin)
-                      {
-                          int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x*stride + igmin;
-                          if(ig < ncouls)
-                          {
-                            for(int iw = nstart; iw < nend; ++iw)
-                            {
-                              GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
-                              GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
-                              ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
-                            }
-                          }
-                      }
-                  }
-              }
-
-            for(int iw = nstart; iw < nend; ++iw)
+            }
+            if(leftOverncouls)
             {
+                int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x;
+                if(ig < ncouls)
+                {
+                    for(int iw = nstart; iw < nend; ++iw)
+                    {
+                        GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
+                        GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
+                        ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
+                   }
+                }
+            }
+        }
+        else
+        {
+            for(int igmin = 0; igmin < stride; ++igmin)
+            { 
+                for( int x = 0; x < loopOverncouls/stride && threadIdx.x < numThreadsPerBlock ; ++x)
+                {
+                    int ig = (x*numThreadsPerBlock + threadIdx.x) * stride + igmin ;
+                    if(ig < ncouls)
+                    {
+                      for(int iw = nstart; iw < nend; ++iw)
+                      {
+                          GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
+                          GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
+                          ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
+                      }
+                    }
+                }
+            }
+            if(leftOverncouls)
+            {
+                for(int igmin = 0; igmin < stride; ++igmin)
+                {
+                    int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x*stride + igmin;
+                    if(ig < ncouls)
+                    {
+                      for(int iw = nstart; iw < nend; ++iw)
+                      {
+                          GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls +igp]);
+                          GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
+                          ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
+                      }
+                    }
+                }
+            }
+        }
+
+        for(int iw = nstart; iw < nend; ++iw)
+        {
             atomicAdd(&achtemp_re[iw] , achtemp_re_loc[iw] );
             atomicAdd(&achtemp_im[iw] , achtemp_im_loc[iw] );
-            }
+        }
     }
 }
 

@@ -33,23 +33,24 @@ __global__  void NumBandNgpown_kernel( double *wtilde_array, double *aqsntemp, d
         int indigp = inv_igp_index[my_igp];
         int igp = indinv[indigp];
         for(int iw = nstart; iw < nend; ++iw)
-        {
             achtemp_loc[iw] = 0.00;
 
-            if(stride == 0)
+        if(stride == 0)
+        {
+            for( int x = 0; x < loopOverncouls && threadIdx.x < numThreadsPerBlock ; ++x)
+            { 
+                int ig = x*numThreadsPerBlock + threadIdx.x;
+                if(ig < ncouls)
+                    for(int iw = nstart; iw < nend; ++iw)
+                        ncoulsKernel(wx_array[iw], wtilde_array[my_igp*ncouls + ig], aqsmtemp[n1*ncouls + igp], aqsntemp[n1*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[ig], achtemp_loc[iw]);
+            }
+            if(leftOverncouls)
             {
-                for( int x = 0; x < loopOverncouls && threadIdx.x < numThreadsPerBlock ; ++x)
-                { 
-                    int ig = x*numThreadsPerBlock + threadIdx.x;
-                    if(ig < ncouls)
+                int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x;
+                if(ig < ncouls)
+                    for(int iw = nstart; iw < nend; ++iw)
                         ncoulsKernel(wx_array[iw], wtilde_array[my_igp*ncouls + ig], aqsmtemp[n1*ncouls + igp], aqsntemp[n1*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[ig], achtemp_loc[iw]);
-                }
-                if(leftOverncouls)
-                {
-                    int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x;
-                    if(ig < ncouls)
-                        ncoulsKernel(wx_array[iw], wtilde_array[my_igp*ncouls + ig], aqsmtemp[n1*ncouls + igp], aqsntemp[n1*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[ig], achtemp_loc[iw]);
-                }
+            }
           }
           else
           {
@@ -59,7 +60,8 @@ __global__  void NumBandNgpown_kernel( double *wtilde_array, double *aqsntemp, d
                   {
                       int ig = (x*numThreadsPerBlock + threadIdx.x) * stride + igmin ;
                       if(ig < ncouls)
-                        ncoulsKernel(wx_array[iw], wtilde_array[my_igp*ncouls + ig], aqsmtemp[n1*ncouls + igp], aqsntemp[n1*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[ig], achtemp_loc[iw]);
+                        for(int iw = nstart; iw < nend; ++iw)
+                            ncoulsKernel(wx_array[iw], wtilde_array[my_igp*ncouls + ig], aqsmtemp[n1*ncouls + igp], aqsntemp[n1*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[ig], achtemp_loc[iw]);
                   }
               }
               if(leftOverncouls)
@@ -68,13 +70,13 @@ __global__  void NumBandNgpown_kernel( double *wtilde_array, double *aqsntemp, d
                   {
                       int ig = loopOverncouls*numThreadsPerBlock + threadIdx.x*stride + igmin;
                       if(ig < ncouls)
-                        ncoulsKernel(wx_array[iw], wtilde_array[my_igp*ncouls + ig], aqsmtemp[n1*ncouls + igp], aqsntemp[n1*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[ig], achtemp_loc[iw]);
+                        for(int iw = nstart; iw < nend; ++iw)
+                            ncoulsKernel(wx_array[iw], wtilde_array[my_igp*ncouls + ig], aqsmtemp[n1*ncouls + igp], aqsntemp[n1*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[ig], achtemp_loc[iw]);
                   }
               }
           }
-
-            atomicAdd(&achtemp[iw] , achtemp_loc[iw] );
-        }
+            for(int iw = nstart; iw < nend; ++iw)
+                atomicAdd(&achtemp[iw] , achtemp_loc[iw] );
     }
 }
 
