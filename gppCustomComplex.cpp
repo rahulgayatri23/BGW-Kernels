@@ -179,7 +179,6 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 //        __itt_pause();
 //        __SSC_MARK(0x222);
     }
-
     else
     {
 #pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)

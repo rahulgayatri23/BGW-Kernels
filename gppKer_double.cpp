@@ -143,7 +143,7 @@ void noflagOCC_solver(int *inv_igp_index, int *indinv, double *wx_array, double 
             for(int iw = nstart; iw < nend; ++iw)
             {
                 double wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig]; //1 flops
-                double delw = wtilde_array[my_igp*ncouls+ig] * wdiff * 1*(wdiff * wdiff); //4 ops 
+                double delw = wtilde_array[my_igp*ncouls+ig] * wdiff * 1/(wdiff * wdiff); //4 ops 
                 double sch_array = aqsmtemp[n1*ncouls+igp] * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[ig]; //5 ops
                 achtemp_loc[iw] += sch_array; // 1 op
             }

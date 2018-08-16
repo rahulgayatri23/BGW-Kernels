@@ -15,8 +15,8 @@ ifeq ($(CXX),CC)
     CXXFLAGS+=-fma #Fused multiply and add
     CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DLIKWID_PERFMON
     CXXFLAGS+=-I /usr/common/software/likwid/4.3.0/include/ -DUSE_VTUNE -I${VTUNE_AMPLIFIER_XE_2018_DIR}/include -DLIKWID_PERFMON
-    #CXXFLAGS+=-xCORE-AVX2
-    CXXFLAGS+=-xMIC-AVX512
+    CXXFLAGS+=-xCORE-AVX2
+    #CXXFLAGS+=-xMIC-AVX512
     LINKFLAGS=-qopenmp -dynamic
     LINKFLAGS+=-L /usr/common/software/likwid/4.3.0/lib -llikwid
     LINKFLAGS+=-L ${VTUNE_AMPLIFIER_XE_2018_DIR}/lib64 -littnotify
