@@ -220,30 +220,33 @@ __global__  void NumberBands_kernel( GPUComplex *wtilde_array, GPUComplex *aqsnt
                 int indigp = inv_igp_index[my_igp];
                 int igp = indinv[indigp];
 
-                for(int iw = nstart; iw < nend; ++iw)
+                if(stride == 0)
                 {
-                    if(stride == 0)
-                    {
-                        for(int ig = 0; ig < ncouls; ++ig) 
-                        { 
+                    for(int ig = 0; ig < ncouls; ++ig) 
+                    { 
+                        for(int iw = nstart; iw < nend; ++iw)
+                        {
                             GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls+igp]);
                             GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
                             ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
-                        } //ncouls
-                    }
-                    else
+                        } // iw
+                    } //ncouls
+                }
+                else
+                {
+                    for(int igmin = 0; igmin < stride; ++igmin)
                     {
-                        for(int igmin = 0; igmin < stride; ++igmin)
+                        for(int ig = 0; ig < ncouls; ig+=stride) 
                         {
-                            for(int ig = 0; ig < ncouls; ig+=stride) 
-                            {
+                            for(int iw = nstart; iw < nend; ++iw)
+                            { 
                                 GPUComplex mygpvar1 = d_GPUComplex_conj(aqsmtemp[n1*ncouls+igp]);
                                 GPUComplex wdiff = d_doubleMinusGPUComplex(wx_array[iw] , wtilde_array[my_igp*ncouls+ig]);
                                 ncoulsKernel(mygpvar1, wdiff, aqsntemp[n1*ncouls+ig], wtilde_array[my_igp*ncouls+ig], I_eps_array[my_igp*ncouls+ig], vcoul[igp], achtemp_re_loc[iw], achtemp_im_loc[iw]);
-                            }
+                            } // iw
                         }
-                    } //else
-                } // iw
+                    }
+                } //else
             } // ngpown
         }
 

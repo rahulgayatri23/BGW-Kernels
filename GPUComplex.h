@@ -16,13 +16,13 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#define NumBandsKernel 0
+#define NumBandsKernel 1
 #define NgpownKernel 0
-#define NumBandsNgpownKernel 3
+#define NumBandsNgpownKernel 0
 #define NgpownNcoulsKernel 0
 
 #define nstart 0
-#define nend 3
+#define nend 1
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
