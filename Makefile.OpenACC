@@ -1,5 +1,7 @@
-EXE = gppKer_OpenACC.ex
-SRC = gppKer_OpenACC.cpp 
+#EXE = gppKer_OpenACC.ex
+#SRC = gppKer_OpenACC.cpp 
+EXE = gppCustomComplex_OpenACC.ex
+SRC = gppCustomComplex_OpenACC.cpp 
 
 #CXX = xlc++
 #CXX = CC 
@@ -34,8 +36,11 @@ ifeq ($(CXX),icc)
 endif 
 
 ifeq ($(CXX),pgc++)
-	CXXFLAGS=-O3 -std=c++11 --gnu_extensions -g -Minfo=accel -acc -ta=nvidia
+	CXXFLAGS=-O3 -std=c++11 --gnu_extensions -g -Munroll
+	CXXFLAGS+=-acc -ta=nvidia 
+	#CXXFLAGS+=-Minfo=accel 
 	LINKFLAGS=-acc
+	LINKFLAGS+=-ta=tesla:cc70
 endif 
 
 OBJ = $(SRC:.cpp=.o)
