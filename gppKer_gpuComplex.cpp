@@ -203,7 +203,6 @@ int main(int argc, char** argv)
     int *inv_igp_index = new int[ngpown];
     int *indinv = new int[ncouls+1];
 
-    GPUComplex *acht_n1_loc = new GPUComplex[number_bands];
     GPUComplex *achtemp = new GPUComplex[(nend-nstart)];
     GPUComplex *aqsmtemp = new GPUComplex[number_bands*ncouls];
     GPUComplex *aqsntemp = new GPUComplex[number_bands*ncouls];
@@ -351,7 +350,6 @@ int main(int argc, char** argv)
     cudaFree(d_inv_igp_index);
     cudaFree(d_indinv);
 
-    free(acht_n1_loc);
     free(achtemp);
     free(aqsmtemp);
     free(aqsntemp);
