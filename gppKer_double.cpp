@@ -14,7 +14,7 @@
 #include <cuda_runtime_api.h>
 
 #define nstart 0
-#define nend 6
+#define nend 3
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
@@ -61,131 +61,6 @@ inline void __cudaCheckError( const char *file, const int line )
 
 
 using namespace std;
-
-//inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, double  *aqsmtemp, double *aqsntemp, double *I_eps_array, double achstemp,  int* indinv, int ngpown, double* vcoul)
-//{
-//    double to1 = 1e-6;
-//    double schstemp(0.0, 0.0);;
-//
-//    for(int my_igp = 0; my_igp< ngpown; my_igp++)
-//    {
-//        double schs(0.0, 0.0);
-//        double matngmatmgp(0.0, 0.0);
-//        double matngpmatmg(0.0, 0.0);
-//        double halfinvwtilde, delw, ssx, sch, wdiff, cden , eden, mygpvar1, mygpvar2;
-//        int indigp = inv_igp_index[my_igp];
-//        int igp = indinv[indigp];
-//        if(indigp == ncouls)
-//            igp = ncouls-1;
-//
-//        if(!(igp > ncouls || igp < 0)){
-//
-//            double mygpvar2, mygpvar1;
-//            mygpvar1 = double_conj(aqsmtemp[n1*ncouls+igp]);
-//            mygpvar2 = aqsntemp[n1*ncouls+igp];
-//
-//
-//
-//            schs = I_eps_array[my_igp*ncouls+igp];
-//            matngmatmgp = double_product(mygpvar1, aqsntemp[n1*ncouls+igp]);
-//
-//
-//            if(double_abs(schs) > to1)
-//                double_fma(schstemp, matngmatmgp, schs);
-//            }
-//            else 
-//            {
-//                for(int ig=1; ig<ncouls; ++ig)
-//                {
-//                    double mult_result(double_product(I_eps_array[my_igp*ncouls+ig] , mygpvar1));
-//                    double_fms(schstemp,aqsntemp[n1*ncouls+igp], mult_result); 
-//                }
-//            }
-//
-//        schstemp = double_mult(schstemp, vcoul[igp], 0.5);
-//        achstemp += schstemp;
-//    }
-//}
-//
-//inline void flagOCC_solver(double wxt, double *wtilde_array, int my_igp, int n1, double *aqsmtemp, double *aqsntemp, double *I_eps_array, double &ssxt, double &scht,int ncouls, int igp, int number_bands, int ngpown)
-//{
-//    double expr0(0.00, 0.00);
-//    double expr(0.5, 0.5);
-//    double matngmatmgp(0.0, 0.0);
-//    double matngpmatmg(0.0, 0.0);
-//
-//    for(int ig=0; ig<ncouls; ++ig)
-//    {
-//        double wtilde = wtilde_array[my_igp*ncouls+ig];
-//        double wtilde2 = double_square(wtilde);
-//        double Omega2 = double_product(wtilde2,I_eps_array[my_igp*ncouls+ig]);
-//        double mygpvar1 = double_conj(aqsmtemp[n1*ncouls+igp]);
-//        double mygpvar2 = aqsmtemp[n1*ncouls+igp];
-//        double matngmatmgp = double_product(aqsntemp[n1*ncouls+ig] , mygpvar1);
-//        if(ig != igp) matngpmatmg = double_product(double_conj(aqsmtemp[n1*ncouls+ig]) , mygpvar2);
-//
-//        double delw2, scha_mult, ssxcutoff;
-//        double to1 = 1e-6;
-//        double sexcut = 4.0;
-//        double gamma = 0.5;
-//        double limitone = 1.0/(to1*4.0);
-//        double limittwo = pow(0.5,2);
-//        double sch, ssx;
-//    
-//        double wdiff = doubleMinusdouble(wxt , wtilde);
-//    
-//        double cden = wdiff;
-//        double rden = 1/double_real(double_product(cden , double_conj(cden)));
-//        double delw = double_mult(double_product(wtilde , double_conj(cden)) , rden);
-//        double delwr = double_real(double_product(delw , double_conj(delw)));
-//        double wdiffr = double_real(double_product(wdiff , double_conj(wdiff)));
-//    
-//        if((wdiffr > limittwo) && (delwr < limitone))
-//        {
-//            sch = double_product(delw , I_eps_array[my_igp*ngpown+ig]);
-//            double cden = std::pow(wxt,2);
-//            rden = std::pow(cden,2);
-//            rden = 1.00 / rden;
-//            ssx = double_mult(Omega2 , cden , rden);
-//        }
-//        else if (delwr > to1)
-//        {
-//            sch = expr0;
-//            cden = double_mult(double_product(wtilde2, doublePlusdouble((double)0.50, delw)), 4.00);
-//            rden = double_real(double_product(cden , double_conj(cden)));
-//            rden = 1.00/rden;
-//            ssx = double_product(double_product(-Omega2 , double_conj(cden)), double_mult(delw, rden));
-//        }
-//        else
-//        {
-//            sch = expr0;
-//            ssx = expr0;
-//        }
-//    
-//        ssxcutoff = double_abs(I_eps_array[my_igp*ngpown+ig]) * sexcut;
-//        if((double_abs(ssx) > ssxcutoff) && (wxt < 0.00)) ssx = expr0;
-//
-//        ssxt += double_product(matngmatmgp , ssx);
-//        scht += double_product(matngmatmgp , sch);
-//    }
-//}
-//
-//void gppKernelCPU( double *wtilde_array, double *aqsntemp, double *I_eps_array, int ncouls, double wxt, double& achtemp_re_iw, double& achtemp_im_iw, int my_igp, double mygpvar1, int n1, double vcoul_igp)
-//{
-//    double scht(0.00, 0.00);
-//    for(int ig = 0; ig<ncouls; ++ig)
-//    {
-//
-//        double wdiff = doubleMinusdouble(wxt , wtilde_array[my_igp*ncouls+ig]);
-//        double rden = double_real(double_product(wdiff, double_conj(wdiff)));
-//        rden = 1/rden;
-//        double delw = double_mult(double_product(wtilde_array[my_igp*ncouls+ig] , double_conj(wdiff)), rden); 
-//        
-//        scht += double_mult(double_product(double_product(mygpvar1 , aqsntemp[n1*ncouls+ig]), double_product(delw , I_eps_array[my_igp*ncouls+ig])), 0.5);
-//    }
-//    achtemp_re_iw += double_real( double_mult(scht , vcoul_igp));
-//    achtemp_im_iw += double_imag( double_mult(scht , vcoul_igp));
-//}
 
 int main(int argc, char** argv)
 {

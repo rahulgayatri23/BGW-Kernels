@@ -14,11 +14,11 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#define NumBandsKernel 0
+#define NumBandsKernel 1
 #define NgpownKernel 0
 #define NumBandsNgpownKernel 0
 #define NgpownNcoulsKernel 0
-#define NumBandsNcoulsKernel 1
+#define NumBandsNcoulsKernel 0
 
 #define nstart 0
 #define nend 6

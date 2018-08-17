@@ -5,12 +5,12 @@
 #include <cmath>
 
 #define nstart 0
-#define nend 6
+#define nend 3
 
 __device__ void ncoulsKernel(double wx_array_iw, double wtilde_array, double aqsmtemp, double aqsntemp, double I_eps_array, double vcoul, double &achtemp)
 {
     double wdiff = wx_array_iw - wtilde_array;
-    double delw = wtilde_array * wdiff * 1*(wdiff * wdiff); 
+    double delw = wtilde_array * wdiff * 1/(wdiff * wdiff); 
     double sch_array = aqsmtemp * aqsntemp * delw * I_eps_array * 0.5*vcoul; 
     achtemp += sch_array;
 }
@@ -88,11 +88,4 @@ void gppKernelGPU( double *wtilde_array, double *aqsntemp, double* aqsmtemp, dou
     printf("Launching a double dimension grid with numBlocks = (%d, %d) and %d threadsPerBlock \n", number_bands, ngpown, numThreadsPerBlock);
 
     NumBandNgpown_kernel  <<< numBlocks, numThreadsPerBlock >>> ( wtilde_array, aqsntemp, aqsmtemp, I_eps_array, ncouls, ngpown, number_bands, wx_array, achtemp, vcoul, indinv, inv_igp_index, numThreadsPerBlock, stride);
-
-//void till_nvbandKernel(double *aqsmtemp, double *aqsntemp, double *asxtemp, int *inv_igp_index, int *indinv, double *wtilde_array, double *wx_array, double *I_eps_array, int ncouls, int nvband, int ngpown, double *vcoul)
-//{
-//    dim3 numBlocks(nvband, ngpown);
-//    int numThreadsPerBlock = ncouls;
-//
-//    d_flagOCC_solver<<< numBlocks, numThreadsPerBlock>>>(wx_array, wtilde_array, asxtemp, aqsmtemp, aqsntemp, I_eps_array, inv_igp_index, indinv, ncouls, nvband, ngpown, vcoul);
 }
