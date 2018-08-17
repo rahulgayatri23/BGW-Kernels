@@ -10,19 +10,18 @@
 #include <omp.h>
 #include <ctime>
 #include <chrono>
-
-
 #include <vector_types.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#define NumBandsKernel 1
+#define NumBandsKernel 0
 #define NgpownKernel 0
 #define NumBandsNgpownKernel 0
 #define NgpownNcoulsKernel 0
+#define NumBandsNcoulsKernel 1
 
 #define nstart 0
-#define nend 1
+#define nend 6
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
