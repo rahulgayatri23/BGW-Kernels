@@ -58,12 +58,15 @@ int main(int argc, char** argv)
     CustomComplex *ssx_array = new CustomComplex[nend-nstart];
     CustomComplex *ssxa = new CustomComplex[ncouls];
     CustomComplex achstemp;
+    double *vcoul = new double[ncouls];
+    double wx_array[nend-nstart];
 
     double *achtemp_re = new double[nend-nstart];
     double *achtemp_im = new double[nend-nstart];
                         
-    double *vcoul = new double[ncouls];
-    double wx_array[nend-nstart];
+    //Creating different double arrays for real and imaginary parts of the code since it looks like on summit the complex class has issues with stuff.
+    double *wtilde_array_re = new double[ngpown*ncouls];
+
 
     cout << "Size of wtilde_array = " << (ncouls*ngpown*2.0*8) / pow(1024,2) << " Mbytes" << endl;
     cout << "Size of aqsntemp = " << (ncouls*number_bands*2.0*8) / pow(1024,2) << " Mbytes" << endl;
@@ -81,6 +84,7 @@ int main(int argc, char** argv)
        {
            I_eps_array[i*ncouls+j] = expr;
            wtilde_array[i*ncouls+j] = expr;
+           wtilde_array_re[i*ncouls+j] = 0.5;
        }
 
    for(int i=0; i<ncouls; i++)
@@ -113,45 +117,56 @@ int main(int argc, char** argv)
     double achtemp_re0 = 0.00, achtemp_re1 = 0.00, achtemp_re2 = 0.00, \
         achtemp_im0 = 0.00, achtemp_im1 = 0.00, achtemp_im2 = 0.00;
 
-#pragma omp target enter data map(alloc:inv_igp_index[0:ngpown], indinv[0:ncouls+1], wtilde_array[0:ngpown*ncouls], wx_array[nstart:nend], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], vcoul[0:ncouls])
-#pragma omp target update to(inv_igp_index[0:ngpown], indinv[0:ncouls+1], wtilde_array[0:ngpown*ncouls], wx_array[nstart:nend], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], vcoul[0:ncouls])
+//#pragma omp target enter data map(alloc:inv_igp_index[0:ngpown], indinv[0:ncouls+1], wtilde_array[0:ngpown*ncouls], wx_array[nstart:nend], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], vcoul[0:ncouls])
+//#pragma omp target update to(inv_igp_index[0:ngpown], indinv[0:ncouls+1], wtilde_array[0:ngpown*ncouls], wx_array[nstart:nend], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], vcoul[0:ncouls])
 
     auto start_chrono = std::chrono::high_resolution_clock::now();
-#pragma omp target teams distribute parallel for map(tofrom:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)\
+#pragma omp target teams distribute parallel for \
+    map(to:inv_igp_index[0:ngpown], indinv[0:ncouls+1], wtilde_array[0:ngpown*ncouls], wtilde_array_re[0:ngpown*ncouls], wx_array[nstart:nend], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], vcoul[0:ncouls]) \
+    map(tofrom:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)\
     reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
-//            achtemp_re0 += 0.05;
-//            achtemp_re1 += 0.05;
-//            achtemp_re2 += 0.05;
-//            achtemp_im0 += 0.05;
-//            achtemp_im1 += 0.05;
-//            achtemp_im2+= 0.05;
-
 
             int indigp = inv_igp_index[my_igp];
             int igp = indinv[indigp];
-
-            CustomComplex wdiff, delw;
-
             double achtemp_re_loc[nend-nstart];
             double achtemp_im_loc[nend-nstart];
-
-            for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
-
+            for(int iw = nstart; iw < nend; ++iw) { achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+//            CustomComplex wdiff(0.00, 0.00), delw(0.00, 0.00);
             for(int ig = 0; ig<ncouls; ++ig)
-            {
                 for(int iw = nstart; iw < nend; ++iw)
                 {
-                    wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig];
-                    delw = wtilde_array[my_igp*ncouls+ig] * CustomComplex_conj(wdiff) * 1/CustomComplex_real(wdiff * CustomComplex_conj(wdiff)); 
-                    CustomComplex sch_array = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[igp];
-                    achtemp_re_loc[iw] += CustomComplex_real(sch_array);
-                    achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
+                    double wdiff_re = wtilde_array_re[0];
+                    double wdiff_im = wtilde_array_re[0];
+                    achtemp_re_loc[iw] += wdiff_re;
+                    achtemp_im_loc[iw] += wdiff_im;
                 }
-            }
+
+//
+//            int indigp = inv_igp_index[my_igp];
+//            int igp = indinv[indigp];
+//
+//            CustomComplex wdiff, delw;
+//
+//            double achtemp_re_loc[nend-nstart];
+//            double achtemp_im_loc[nend-nstart];
+//
+//            for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
+//
+//            for(int ig = 0; ig<ncouls; ++ig)
+//            {
+//                for(int iw = nstart; iw < nend; ++iw)
+//                {
+//                    wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig];
+//                    delw = wtilde_array[my_igp*ncouls+ig] * CustomComplex_conj(wdiff) * 1/CustomComplex_real(wdiff * CustomComplex_conj(wdiff)); 
+//                    CustomComplex sch_array = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[igp];
+//                    achtemp_re_loc[iw] += CustomComplex_real(sch_array);
+//                    achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
+//                }
+//            }
             achtemp_re0 += achtemp_re_loc[0];
             achtemp_re1 += achtemp_re_loc[1];
             achtemp_re2 += achtemp_re_loc[2];
@@ -161,7 +176,7 @@ int main(int argc, char** argv)
         } //ngpown
     } // number-bands
 //#pragma omp target update from (achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
-#pragma omp target exit data map(delete:inv_igp_index[:0], indinv[:0], wtilde_array[:0], wx_array[:0], aqsmtemp[:0], aqsntemp[:0], I_eps_array[:0], vcoul[:0])
+//#pragma omp target exit data map(delete:inv_igp_index[:0], indinv[:0], wtilde_array[:0], wx_array[:0], aqsmtemp[:0], aqsntemp[:0], I_eps_array[:0], vcoul[:0])
 
     std::chrono::duration<double> elapsed_chrono = std::chrono::high_resolution_clock::now() - start_chrono;
 

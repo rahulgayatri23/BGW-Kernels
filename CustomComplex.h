@@ -64,16 +64,15 @@ inline void __cudaCheckError( const char *file, const int line )
 }
 
 
-//template<class re, class im>
 
 class CustomComplex : public double2{
-//#pragma omp declare target
 
     private : 
-//    re x;
-//    im y;
+//    double x;
+//    double y;
 
     public:
+//#pragma omp declare target
     explicit CustomComplex () {
         x = 0.00;
         y = 0.00;
@@ -146,9 +145,10 @@ class CustomComplex : public double2{
     {
         this->y = val;
     }
+//#pragma omp end declare target
 
 // 6 flops
-//    template<class real, class imag>
+//#pragma omp declare target
     friend inline CustomComplex operator *(const CustomComplex &a, const CustomComplex &b) {
         double x_this = a.x * b.x - a.y*b.y ;
         double y_this = a.x * b.y + a.y*b.x ;
@@ -157,38 +157,38 @@ class CustomComplex : public double2{
     }
 
 //2 flops
-//    template<class real, class imag>
     friend inline CustomComplex operator *(const CustomComplex &a, const double &b) {
        CustomComplex result(a.x*b, a.y*b);
        return result;
     }
 
-//    template<class real, class imag>
+//2 flops
+    friend inline CustomComplex operator *(const CustomComplex &a, const int &b) {
+       CustomComplex result(a.x*b, a.y*b);
+       return result;
+    }
+
     friend inline CustomComplex operator -(CustomComplex a, CustomComplex b) {
         CustomComplex result(a.x - b.x, a.y - b.y);
         return result;
     }
 
 //2 flops
-//    template<class real, class imag>
     friend inline CustomComplex operator -(const double &a, CustomComplex& src) {
         CustomComplex result(a - src.x, 0 - src.y);
         return result;
     }
 
-    //template<class real, class imag>
     friend inline CustomComplex operator +(const double &a, CustomComplex& src) {
         CustomComplex result(a + src.x, src.y);
         return result;
     }
 
-    //template<class real, class imag>
     friend inline CustomComplex operator +(CustomComplex a, CustomComplex b) {
         CustomComplex result(a.x + b.x, a.y+b.y);
         return result;
     }
 
-    //template<class real, class imag>
     friend inline CustomComplex operator /(CustomComplex a, CustomComplex b) {
 
         CustomComplex b_conj = CustomComplex_conj(b);
@@ -202,22 +202,17 @@ class CustomComplex : public double2{
         return result;
     }
 
-    //template<class real, class imag>
     friend inline CustomComplex operator /(CustomComplex a, double b) {
        CustomComplex result(a.x/b, a.y/b);
        return result;
     }
 
-    //template<class real, class imag>
     friend inline CustomComplex CustomComplex_conj(const CustomComplex& src) ;
 
-    //template<class real, class imag>
     friend inline double CustomComplex_abs(const CustomComplex& src) ;
 
-    //template<class real, class imag>
     friend inline double CustomComplex_real( const CustomComplex& src) ;
 
-    //template<class real, class imag>
     friend inline double CustomComplex_imag( const CustomComplex& src) ;
 //#pragma omp end declare target
 };

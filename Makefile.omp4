@@ -1,16 +1,16 @@
 EXE = gppCustomComplex_OMP4.ex
 SRC = gppCustomComplex_OMP4.cpp
 
-CXX = xlc++_r
+#CXX = xlc++_r
 #CXX = CC 
-#CXX = g++
+CXX = g++
 #CXX = clang++
 
 LINK = ${CXX}
 
 ifeq ($(CXX),g++)
-	CXXFLAGS= -g -O3 -std=c++11 -fopenmp -foffload="-lm" -foffload=nvptx-none
-	LINKFLAGS=-fopenmp -foffload="-lm" -foffload=nvptx-none
+	CXXFLAGS= -g -O3 -std=c++11 -fopenmp #-foffload="-lm" -foffload=nvptx-none
+	LINKFLAGS=-fopenmp #-foffload="-lm" -foffload=nvptx-none
 endif 
 
 ifeq ($(CXX),xlc++_r)
