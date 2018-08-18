@@ -97,28 +97,28 @@ __host__ __device__ CustomComplex& operator =(const CustomComplex& src) {
         return *this;
     }
 
-__host__ __device__ CustomComplex& operator +=(const CustomComplex& src) {
+__device__ CustomComplex& operator +=(const CustomComplex& src) {
         x = src.x + this->x;
         y = src.y + this->y;
 
         return *this;
     }
 
-__host__ __device__ CustomComplex& operator -=(const CustomComplex& src) {
+__device__ CustomComplex& operator -=(const CustomComplex& src) {
        x = src.x - this->x;
        y = src.y - this->y;
 
        return *this;
    }
 
-__host__ __device__ CustomComplex& operator -() {
+__device__ CustomComplex& operator -() {
         x = -this->x;
         y = -this->y;
 
         return *this;
     }
 
-__host__ __device__ CustomComplex& operator ~() {
+__device__ CustomComplex& operator ~() {
         return *this;
     }
 
@@ -148,7 +148,7 @@ __host__ __device__ CustomComplex& operator ~() {
     }
 
 // 6 flops
-__host__ __device__ friend inline CustomComplex operator *(const CustomComplex &a, const CustomComplex &b) {
+__device__ friend inline CustomComplex operator *(const CustomComplex &a, const CustomComplex &b) {
         double x_this = a.x * b.x - a.y*b.y ;
         double y_this = a.x * b.y + a.y*b.x ;
         CustomComplex result(x_this, y_this);
@@ -156,36 +156,36 @@ __host__ __device__ friend inline CustomComplex operator *(const CustomComplex &
     }
 
 //2 flops
-    __host__ __device__ friend inline CustomComplex operator *(const CustomComplex &a, const double &b) {
+    __device__ friend inline CustomComplex operator *(const CustomComplex &a, const double &b) {
        CustomComplex result(a.x*b, a.y*b);
        return result;
     }
 
 //2 flops
-    __host__ __device__ friend inline CustomComplex operator -(const double &a, CustomComplex& src) {
+    __device__ friend inline CustomComplex operator -(const double &a, CustomComplex& src) {
         CustomComplex result(a - src.x, 0 - src.y);
         return result;
     }
 
-    __host__ __device__ friend inline CustomComplex operator +(const double &a, CustomComplex& src) {
+    __device__ friend inline CustomComplex operator +(const double &a, CustomComplex& src) {
         CustomComplex result(a + src.x, src.y);
         return result;
     }
 
-    __host__ __device__ friend inline CustomComplex CustomComplex_conj(const CustomComplex& src) ;
+    __device__ friend inline CustomComplex CustomComplex_conj(const CustomComplex& src) ;
 
-    __host__ __device__ friend inline double CustomComplex_abs(const CustomComplex& src) ;
+    __device__ friend inline double CustomComplex_abs(const CustomComplex& src) ;
 
-    __host__ __device__ friend inline double CustomComplex_real( const CustomComplex& src) ;
+    __device__ friend inline double CustomComplex_real( const CustomComplex& src) ;
 
-    __host__ __device__ friend inline double CustomComplex_imag( const CustomComplex& src) ;
+    __device__ friend inline double CustomComplex_imag( const CustomComplex& src) ;
 };
 
 /*
  * Return the conjugate of a complex number 
  1flop
  */
-inline CustomComplex CustomComplex_conj(const CustomComplex& src) {
+__device__ inline CustomComplex CustomComplex_conj(const CustomComplex& src) {
 
     double re_this = src.x;
     double im_this = -1 * src.y;
@@ -198,7 +198,7 @@ inline CustomComplex CustomComplex_conj(const CustomComplex& src) {
 /*
  * Return the absolute of a complex number 
  */
-inline double CustomComplex_abs(const CustomComplex& src) {
+__device__ inline double CustomComplex_abs(const CustomComplex& src) {
     double re_this = src.x * src.x;
     double im_this = src.y * src.y;
 
@@ -209,14 +209,14 @@ inline double CustomComplex_abs(const CustomComplex& src) {
 /*
  * Return the real part of a complex number 
  */
-inline double CustomComplex_real( const CustomComplex& src) {
+__device__ inline double CustomComplex_real( const CustomComplex& src) {
     return src.x;
 }
 
 /*
  * Return the imaginary part of a complex number 
  */
-inline double CustomComplex_imag( const CustomComplex& src) {
+__device__ inline double CustomComplex_imag( const CustomComplex& src) {
     return src.y;
 }
 

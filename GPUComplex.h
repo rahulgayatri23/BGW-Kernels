@@ -21,7 +21,7 @@
 #define NumBandsNcoulsKernel 0
 
 #define nstart 0
-#define nend 6
+#define nend 3
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
