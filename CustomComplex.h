@@ -19,11 +19,11 @@ Templated CustomComplex class that represents a complex class comprised of  any 
 #include <cuda_runtime_api.h>
 
 #define nstart 0
-#define nend 1
+#define nend 3
 
-#define NumBandsKernel 0
+#define NumBandsKernel 1
 #define NgpownKernel 0
-#define NumBandsNgpownKernel 1
+#define NumBandsNgpownKernel 0
 #define NgpownNcoulsKernel 0
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
@@ -70,8 +70,8 @@ class CustomComplex : public double2{
 
     private : 
     //The x and y are now available from the double2 data type
-//    re x;
-//    im y;
+//    double x;
+//    double y;
 
     public:
     explicit CustomComplex () {
