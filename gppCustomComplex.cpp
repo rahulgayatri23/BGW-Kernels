@@ -190,8 +190,6 @@ int main(int argc, char** argv)
     reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2) 
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
-//        ngpownKernel(inv_igp_index, indinv, vcoul, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, wx_array, n1, ngpown, ncouls, \
-                    achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2);
 #pragma omp parallel for \
     reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2) 
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
@@ -203,10 +201,9 @@ int main(int argc, char** argv)
 
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
-#pragma omp simd
+//#pragma omp simd
             for(int ig = 0; ig<ncouls; ++ig)
             {
-#pragma unroll
                 for(int iw = nstart; iw < nend; ++iw)
                 {
                     CustomComplex wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig];
@@ -216,7 +213,13 @@ int main(int argc, char** argv)
                     achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
                 }
             }
-
+//            for(int iw = nstart; iw < nend; ++iw)
+//            {
+//#pragma omp atomic
+//                achtemp_re[iw] += achtemp_re_loc[iw];
+//#pragma omp atomic
+//                achtemp_im[iw] += achtemp_im_loc[iw];
+//            }
             achtemp_re0 += achtemp_re_loc[0];
             achtemp_re1 += achtemp_re_loc[1];
             achtemp_re2 += achtemp_re_loc[2];

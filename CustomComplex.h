@@ -65,11 +65,11 @@ inline void __cudaCheckError( const char *file, const int line )
 
 
 
-class CustomComplex {
+class CustomComplex : public double2{
 
     private : 
-    double x;
-    double y;
+//    double x;
+//    double y;
 
     public:
 //#pragma omp declare target
