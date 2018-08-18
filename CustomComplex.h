@@ -65,11 +65,11 @@ inline void __cudaCheckError( const char *file, const int line )
 
 
 
-class CustomComplex : public double2{
+class CustomComplex {
 
     private : 
-//    double x;
-//    double y;
+    double x;
+    double y;
 
     public:
 //#pragma omp declare target
@@ -246,8 +246,3 @@ inline double CustomComplex_imag( const CustomComplex& src) {
 
 #endif
 
-//Function definition
-inline void schDttt_corKernel1(CustomComplex &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex *I_epsR_array, CustomComplex *I_epsA_array, CustomComplex *aqsmtemp, CustomComplex *aqsntemp, CustomComplex &schDttt, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
-
-inline void schDttt_corKernel2(CustomComplex &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex *I_epsR_array, CustomComplex *I_epsA_array, CustomComplex *aqsmtemp, CustomComplex *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
-//#pragma omp end declare target
