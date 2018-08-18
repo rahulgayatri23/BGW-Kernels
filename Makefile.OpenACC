@@ -40,7 +40,8 @@ ifeq ($(CXX),pgc++)
 	CXXFLAGS+=-acc -ta=nvidia 
 	#CXXFLAGS+=-Minfo=accel 
 	LINKFLAGS=-acc
-	LINKFLAGS+=-ta=tesla:cc70
+#	LINKFLAGS+=-ta=tesla:cc70
+	LINKFLAGS+=-ta=tesla:cc60
 endif 
 
 OBJ = $(SRC:.cpp=.o)
