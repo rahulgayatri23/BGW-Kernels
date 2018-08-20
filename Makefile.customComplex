@@ -14,7 +14,7 @@ ifeq ($(CXX),nvcc)
 	CXXFLAGS= -g -O3 -std=c++11 -Wno-deprecated-gpu-targets 
 	CXXFLAGS+=-arch=sm_70 
 #	CXXFLAGS+=-Xptxas -v 
-	CXXFLAGS+=--maxrregcount=360
+	#CXXFLAGS+=--maxrregcount=360
 	LINKFLAGS=-Wno-deprecated-gpu-targets
 endif 
 

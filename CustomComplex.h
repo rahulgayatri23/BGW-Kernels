@@ -21,9 +21,9 @@ Templated CustomComplex class that represents a complex class comprised of  any 
 #define nstart 0
 #define nend 3
 
-#define NumBandsKernel 1
+#define NumBandsKernel 0
 #define NgpownKernel 0
-#define NumBandsNgpownKernel 0
+#define NumBandsNgpownKernel 1
 #define NgpownNcoulsKernel 0
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
