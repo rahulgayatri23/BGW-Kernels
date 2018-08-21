@@ -201,9 +201,10 @@ int main(int argc, char** argv)
 
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
-//#pragma omp simd
+#pragma omp simd
             for(int ig = 0; ig<ncouls; ++ig)
             {
+                int iw = nstart;
                 for(int iw = nstart; iw < nend; ++iw)
                 {
                     CustomComplex wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig];

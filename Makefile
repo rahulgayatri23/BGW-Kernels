@@ -3,9 +3,9 @@
 EXE = gppCustomComplex.ex
 SRC = gppCustomComplex.cpp 
 
-#CXX = xlc++_r
+CXX = xlc++_r
 #CXX = CC 
-CXX = g++
+#CXX = g++
 #CXX = clang++
 
 LINK = ${CXX}
