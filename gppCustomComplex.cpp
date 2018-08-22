@@ -1,5 +1,5 @@
 #include "CustomComplex.h"
-//#include <ittnotify.h>
+#include <ittnotify.h>
 
 /*Contains stride dimenion*/
 
@@ -135,8 +135,8 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 {
     if(stride == 0)
     {
-//        __SSC_MARK(0x111);
-//        __itt_resume();
+        __SSC_MARK(0x111);
+        __itt_resume();
 #pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
         for(int n1 = 0; n1<number_bands; ++n1) 
         {
@@ -176,8 +176,8 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
                 }
             } //ngpown
         } //number_bands
-//        __itt_pause();
-//        __SSC_MARK(0x222);
+        __itt_pause();
+        __SSC_MARK(0x222);
     }
     else
     {
@@ -268,6 +268,7 @@ int main(int argc, char** argv)
     std::cout << "Number of OpenMP Threads = " << numThreads << endl;
 
     //Printing out the params passed.
+    std::cout << "Sizeof(CustomComplex<double, double> = " << sizeof(CustomComplex<double, double>) << " bytes" << std::endl;
     std::cout << "number_bands = " << number_bands \
         << "\t nvband = " << nvband \
         << "\t ncouls = " << ncouls \
