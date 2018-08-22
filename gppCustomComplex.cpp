@@ -137,7 +137,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     {
         __SSC_MARK(0x111);
         __itt_resume();
-#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
+#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands) reduction(+:achtemp_re[nstart:nend], achtemp_im[nstart:nend])
         for(int n1 = 0; n1<number_bands; ++n1) 
         {
             for(int my_igp=0; my_igp<ngpown; ++my_igp)
@@ -169,9 +169,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
                 }
                 for(int iw = nstart; iw < nend; ++iw)
                 {
-#pragma omp atomic
                     achtemp_re[iw] += achtemp_re_loc[iw];
-#pragma omp atomic
                     achtemp_im[iw] += achtemp_im_loc[iw];
                 }
             } //ngpown
@@ -181,7 +179,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     }
     else
     {
-#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands)
+#pragma omp parallel for  default(shared) firstprivate(ngpown, ncouls, number_bands) reduction(+:achtemp_re[nstart:nend], achtemp_im[nstart:nend])
         for(int n1 = 0; n1<number_bands; ++n1) 
         {
             for(int my_igp=0; my_igp<ngpown; ++my_igp)
@@ -216,9 +214,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
                 }
                 for(int iw = nstart; iw < nend; ++iw)
                 {
-#pragma omp atomic
                     achtemp_re[iw] += achtemp_re_loc[iw];
-#pragma omp atomic
                     achtemp_im[iw] += achtemp_im_loc[iw];
                 }
             } //ngpown
