@@ -112,6 +112,12 @@ class CustomComplex {
        return result;
     }
 
+    template<class real, class imag>
+    friend inline CustomComplex<real,imag> operator -(CustomComplex<real, imag> a, CustomComplex<real,imag> b) {
+        CustomComplex<real,imag> result(a.x - b.x, a.y - b.y);
+        return result;
+    }
+
 //2 flops
     template<class real, class imag>
     friend inline CustomComplex<real,imag> operator -(const double &a, CustomComplex<real,imag>& src) {
@@ -123,6 +129,32 @@ class CustomComplex {
     friend inline CustomComplex<real,imag> operator +(const double &a, CustomComplex<real,imag>& src) {
         CustomComplex<real,imag> result(a + src.x, src.y);
         return result;
+    }
+
+    template<class real, class imag>
+    friend inline CustomComplex<real,imag> operator +(CustomComplex<real, imag> a, CustomComplex<real,imag> b) {
+        CustomComplex<real,imag> result(a.x + b.x, a.y+b.y);
+        return result;
+    }
+
+    template<class real, class imag>
+    friend inline CustomComplex<real, imag> operator /(CustomComplex<real, imag> a, CustomComplex<real, imag> b) {
+
+        CustomComplex<real, imag> b_conj = CustomComplex_conj(b);
+        CustomComplex<real, imag> numerator = a * b_conj;
+        CustomComplex<real, imag> denominator = b * b_conj;
+
+        double re_this = numerator.x / denominator.x;
+        double im_this = numerator.y / denominator.x;
+
+        CustomComplex<real, imag> result(re_this, im_this);
+        return result;
+    }
+
+    template<class real, class imag>
+    friend inline CustomComplex<real, imag> operator /(CustomComplex<real, imag> a, real b) {
+       CustomComplex<real, imag> result(a.x/b, a.y/b);
+       return result;
     }
 
     template<class real, class imag>
