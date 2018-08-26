@@ -117,12 +117,13 @@ int main(int argc, char** argv)
 
     auto start_chrono = std::chrono::high_resolution_clock::now();
 
-#pragma acc parallel loop gang present(inv_igp_index[0:ngpown], indinv[0:ncouls+1], wtilde_array[0:ngpown*ncouls], wx_array[0:3], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], vcoul[0:ncouls]) \
+#pragma acc parallel loop gang num_gangs(number_bands) num_workers(1) vector_length(32) present(inv_igp_index[0:ngpown], indinv[0:ncouls+1], wtilde_array[0:ngpown*ncouls], wx_array[0:3], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], vcoul[0:ncouls]) //\
     reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
-#pragma acc loop worker \
+//#pragma acc loop worker \
     reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
+#pragma acc loop vector
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
             int indigp = inv_igp_index[my_igp];
@@ -135,7 +136,7 @@ int main(int argc, char** argv)
 
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
-#pragma acc loop vector
+//#pragma acc loop vector
             for(int ig = 0; ig<ncouls; ++ig)
             {
                 for(int iw = nstart; iw < nend; ++iw)
@@ -147,28 +148,33 @@ int main(int argc, char** argv)
                     achtemp_im_loc[iw] += CustomComplex_imag(sch_array);
                 }
             }
-            achtemp_re0 += achtemp_re_loc[0];
-            achtemp_re1 += achtemp_re_loc[1];
-            achtemp_re2 += achtemp_re_loc[2];
-            achtemp_im0 += achtemp_im_loc[0];
-            achtemp_im1 += achtemp_im_loc[1];
-            achtemp_im2 += achtemp_im_loc[2];
+            for(int iw = nstart; iw < nend; ++iw)
+            {
+#pragma acc atomic
+                achtemp_re[iw] += achtemp_re_loc[iw];
+#pragma acc atomic
+                achtemp_im[iw] += achtemp_im_loc[iw];
+            }
+//            achtemp_re0 += achtemp_re_loc[0];
+//            achtemp_re1 += achtemp_re_loc[1];
+//            achtemp_re2 += achtemp_re_loc[2];
+//            achtemp_im0 += achtemp_im_loc[0];
+//            achtemp_im1 += achtemp_im_loc[1];
+//            achtemp_im2 += achtemp_im_loc[2];
         } //ngpown
     } // number-bands
 #pragma acc exit data delete(inv_igp_index[0:ngpown], indinv[0:ncouls+1], wtilde_array[0:ngpown*ncouls], wx_array[0:3], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], vcoul[0:ncouls])
 
     std::chrono::duration<double> elapsed_chrono = std::chrono::high_resolution_clock::now() - start_chrono;
-
-
     std::chrono::duration<double> elapsed_chrono_withDataMovement = std::chrono::high_resolution_clock::now() - start_chrono_withDataMovement;
 
-    achtemp_re[0] = achtemp_re0;
-    achtemp_re[1] = achtemp_re1;
-    achtemp_re[2] = achtemp_re2;
-    achtemp_im[0] = achtemp_im0;
-    achtemp_im[1] = achtemp_im1;
-    achtemp_im[2] = achtemp_im2;
-
+//    achtemp_re[0] = achtemp_re0;
+//    achtemp_re[1] = achtemp_re1;
+//    achtemp_re[2] = achtemp_re2;
+//    achtemp_im[0] = achtemp_im0;
+//    achtemp_im[1] = achtemp_im1;
+//    achtemp_im[2] = achtemp_im2;
+//
     printf(" \n Final achstemp\n");
     achstemp.print();
 
