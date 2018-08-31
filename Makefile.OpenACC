@@ -1,7 +1,9 @@
 #EXE = gppKer_OpenACC.ex
 #SRC = gppKer_OpenACC.cpp 
-EXE = gppCustomComplex_OpenACC.ex
-SRC = gppCustomComplex_OpenACC.cpp 
+#EXE = gppCustomComplex_OpenACC.ex
+#SRC = gppCustomComplex_OpenACC.cpp 
+EXE = testOpenACC.ex
+SRC = testOpenACC.cpp 
 
 #CXX = xlc++
 #CXX = CC 
@@ -36,12 +38,14 @@ ifeq ($(CXX),icc)
 endif 
 
 ifeq ($(CXX),pgc++)
-	CXXFLAGS=-O3 -std=c++11 --gnu_extensions -g -Munroll
-	CXXFLAGS+=-acc -ta=nvidia 
-	#CXXFLAGS+=-Minfo=accel 
-	LINKFLAGS=-acc
-	LINKFLAGS+=-ta=tesla:cc70
-	#LINKFLAGS+=-ta=tesla:cc60
+    CXXFLAGS=-O3 -std=c++11 --gnu_extensions -g #-Munroll
+    CXXFLAGS+=-acc 
+    CXXFLAGS+=-ta=nvidia 
+    #CXXFLAGS+=-ta=host 
+    CXXFLAGS+=-Minfo=accel 
+    LINKFLAGS=-acc
+#	LINKFLAGS+=-ta=tesla:cc70
+#   LINKFLAGS+=-ta=tesla:cc60
 endif 
 
 OBJ = $(SRC:.cpp=.o)
