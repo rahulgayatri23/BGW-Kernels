@@ -186,7 +186,7 @@ int main(int argc, char** argv)
     auto start_chrono = std::chrono::high_resolution_clock::now();
 
 #pragma omp target teams distribute num_teams(number_bands) thread_limit(32) shared(vcoul, aqsntemp, aqsmtemp, I_eps_array) map(to:wx_array[nstart:nend], aqsmtemp[0:number_bands*ncouls],aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wtilde_array[0:ngpown*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1])\
-    map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend], achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2) \
+    map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend]) \
     reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2) 
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
@@ -204,7 +204,6 @@ int main(int argc, char** argv)
 #pragma omp simd
             for(int ig = 0; ig<ncouls; ++ig)
             {
-                int iw = nstart;
                 for(int iw = nstart; iw < nend; ++iw)
                 {
                     CustomComplex wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls+ig];
