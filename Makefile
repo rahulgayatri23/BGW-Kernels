@@ -17,8 +17,7 @@ ifeq ($(CXX),CC)
     #CXXFLAGS+=-xCORE-AVX2
     CXXFLAGS+=-xMIC-AVX512
     LINKFLAGS=-qopenmp #-qopenmp-offload=mic
-    #LINKFLAGS+=-dynamic
-    LINKFLAGS+=-rpath-link /opt/intel/compilers_and_libraries_2018.1.163/linux/compiler/lib/intel64/
+    #LINKFLAGS+=-dynamic #Dynamic flag gives runtime issues with OMP4.5
 endif 
 
 ifeq ($(CXX),g++)
