@@ -11,59 +11,10 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <chrono>
-#include <vector_types.h>
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <chrono>
-
 using namespace std;
 
 #define nstart 0
 #define nend 3
-
-#define CUDAVER 1
-
-#define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
-#define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
-
-inline void __cudaSafeCall( cudaError err, const char *file, const int line )
-{
-#ifdef CUDA_ERROR_CHECK
-    if ( cudaSuccess != err )
-    {
-        fprintf( stderr, "cudaSafeCall() failed at %s:%i : %s\n",
-        file, line, cudaGetErrorString( err ) );
-        exit( -1 );
-    }
-#endif
-
-    return;
-}
-
-inline void __cudaCheckError( const char *file, const int line )
-{
-#ifdef CUDA_ERROR_CHECK
-    cudaError err = cudaGetLastError();
-    if ( cudaSuccess != err )
-    {
-        fprintf( stderr, "cudaCheckError() failed at %s:%i : %s\n",
-        file, line, cudaGetErrorString( err ) );
-        exit( -1 );
-    }
-
-    // More careful checking. However, this will affect performance.
-    // Comment away if needed. - Rahul - commented the below deviceSynchronize
-//    err = cudaDeviceSynchronize();
-    if( cudaSuccess != err )
-    {
-        fprintf( stderr, "cudaCheckError() with sync failed at %s:%i : %s\n",file, line, cudaGetErrorString( err ) );
-        exit( -1 );
-    }
-#endif
-    return;
-}
-
-
 
 class CustomComplex {
 
@@ -72,7 +23,7 @@ class CustomComplex {
     double y;
 
     public:
-//#pragma omp declare target
+#pragma omp declare target
     explicit CustomComplex () {
         x = 0.00;
         y = 0.00;
@@ -145,10 +96,10 @@ class CustomComplex {
     {
         this->y = val;
     }
-//#pragma omp end declare target
+#pragma omp end declare target
 
 // 6 flops
-//#pragma omp declare target
+#pragma omp declare target
     friend inline CustomComplex operator *(const CustomComplex &a, const CustomComplex &b) {
         double x_this = a.x * b.x - a.y*b.y ;
         double y_this = a.x * b.y + a.y*b.x ;
@@ -214,7 +165,7 @@ class CustomComplex {
     friend inline double CustomComplex_real( const CustomComplex& src) ;
 
     friend inline double CustomComplex_imag( const CustomComplex& src) ;
-//#pragma omp end declare target
+#pragma omp end declare target
 };
 
 //#pragma omp declare target
