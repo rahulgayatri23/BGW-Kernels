@@ -132,6 +132,10 @@ void till_nvband(int number_bands, int nvband, int ngpown, int ncouls, CustomCom
 void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex<double> *wtilde_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im, double &elapsedKernelTimer)
 {
     timeval startKernelTimer, endKernelTimer;
+    //Vars to use for reduction
+    double ach_re0 = 0.00, ach_re1 = 0.00, ach_re2 = 0.00, \
+        ach_im0 = 0.00, ach_im1 = 0.00, ach_im2 = 0.00;
+
 #if __OMPOFFLOAD__ 
 #pragma omp target enter data map(alloc:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
@@ -143,7 +147,8 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 #pragma omp target teams distribute parallel for collapse(2)\
     map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
-    map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend]) 
+    map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend]) \
+    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
 #else
     gettimeofday(&startKernelTimer, NULL);
 #pragma omp parallel for
@@ -183,13 +188,19 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
                     achtemp_im_loc[iw] += CustomComplex_imag(&sch_array);
                 }
             }
-            for(int iw = nstart; iw < nend; ++iw)
-            {
-#pragma omp atomic
-                achtemp_re[iw] += achtemp_re_loc[iw];
-#pragma omp atomic
-                achtemp_im[iw] += achtemp_im_loc[iw];
-            }
+            ach_re0 += achtemp_re_loc[0];
+            ach_re1 += achtemp_re_loc[1];
+            ach_re2 += achtemp_re_loc[2];
+            ach_im0 += achtemp_im_loc[0];
+            ach_im1 += achtemp_im_loc[1];
+            ach_im2 += achtemp_im_loc[2];
+//            for(int iw = nstart; iw < nend; ++iw)
+//            {
+//#pragma omp atomic
+//                achtemp_re[iw] += achtemp_re_loc[iw];
+//#pragma omp atomic
+//                achtemp_im[iw] += achtemp_im_loc[iw];
+//            }
         } //ngpown
     } //number_bands
 
@@ -200,6 +211,13 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 #pragma omp target exit data map(delete: aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
 #endif
+
+    achtemp_re[0] = ach_re0;
+    achtemp_re[1] = ach_re1;
+    achtemp_re[2] = ach_re2;
+    achtemp_im[0] = ach_im0;
+    achtemp_im[1] = ach_im1;
+    achtemp_im[2] = ach_im2;
 }
 
 int main(int argc, char** argv)
