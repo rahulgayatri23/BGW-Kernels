@@ -10,58 +10,73 @@
 #include <ctime>
 #include <stdio.h>
 #include <sys/time.h>
-#include <chrono>
+#include <vector_types.h>
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 using namespace std;
 
-#define nstart 0
-#define nend 3
+template<class type>
 
 class CustomComplex {
 
     private : 
-    double x;
-    double y;
 
     public:
-#pragma omp declare target
+    type x;
+    type y;
+
     explicit CustomComplex () {
         x = 0.00;
         y = 0.00;
     }
 
 
-    explicit CustomComplex(const double& a, const double& b) {
+     explicit CustomComplex(const double& a, const double& b) {
         x = a;
         y = b;
     }
 
-    CustomComplex(const CustomComplex& src) {
+     CustomComplex(const CustomComplex& src) {
         x = src.x;
         y = src.y;
     }
 
-    CustomComplex& operator =(const CustomComplex& src) {
+     CustomComplex& operator =(const CustomComplex& src) {
         x = src.x;
         y = src.y;
 
         return *this;
     }
 
-    CustomComplex& operator +=(const CustomComplex& src) {
+     CustomComplex& operator +=(const CustomComplex& src) {
         x = src.x + this->x;
         y = src.y + this->y;
 
         return *this;
     }
 
-    CustomComplex& operator -=(const CustomComplex& src) {
+     CustomComplex& operator *=(const CustomComplex& src) {
+        x = src.x * this->x;
+        y = src.y * this->y;
+
+        return *this;
+    }
+
+     CustomComplex& operator *=(const double src) {
+        x = src * this->x;
+        y = src * this->y;
+
+        return *this;
+    }
+
+     CustomComplex& operator -=(const CustomComplex& src) {
         x = src.x - this->x;
         y = src.y - this->y;
 
         return *this;
     }
 
-    CustomComplex& operator -() {
+     CustomComplex& operator -() {
         x = -this->x;
         y = -this->y;
 
@@ -96,104 +111,225 @@ class CustomComplex {
     {
         this->y = val;
     }
-#pragma omp end declare target
 
 // 6 flops
-#pragma omp declare target
-    friend inline CustomComplex operator *(const CustomComplex &a, const CustomComplex &b) {
-        double x_this = a.x * b.x - a.y*b.y ;
-        double y_this = a.x * b.y + a.y*b.x ;
-        CustomComplex result(x_this, y_this);
+    template<class T>
+     friend inline CustomComplex<T> operator *(const CustomComplex<T> &a, const CustomComplex<T> &b) {
+        T x_this = a.x * b.x - a.y*b.y ;
+        T y_this = a.x * b.y + a.y*b.x ;
+        CustomComplex<T> result(x_this, y_this);
         return (result);
     }
 
 //2 flops
-    friend inline CustomComplex operator *(const CustomComplex &a, const double &b) {
-       CustomComplex result(a.x*b, a.y*b);
+    template<class T>
+     friend inline CustomComplex<T> operator *(const CustomComplex<T>& a, const double &b) {
+       CustomComplex<T> result(a.x*b, a.y*b);
        return result;
     }
 
 //2 flops
-    friend inline CustomComplex operator *(const CustomComplex &a, const int &b) {
-       CustomComplex result(a.x*b, a.y*b);
+    template<class T>
+     friend inline CustomComplex<T> operator *(const CustomComplex<T> &a, const int &b) {
+       CustomComplex<T> result(a.x*b, a.y*b);
        return result;
     }
 
-    friend inline CustomComplex operator -(CustomComplex a, CustomComplex b) {
-        CustomComplex result(a.x - b.x, a.y - b.y);
+    template<class T>
+     friend inline CustomComplex<T> operator -(CustomComplex<T> a, CustomComplex<T> b) {
+        CustomComplex<T> result(a.x - b.x, a.y - b.y);
         return result;
     }
 
 //2 flops
-    friend inline CustomComplex operator -(const double &a, CustomComplex& src) {
-        CustomComplex result(a - src.x, 0 - src.y);
+    template<class T>
+     friend inline CustomComplex<T> operator -(const double &a, CustomComplex<T>& src) {
+        CustomComplex<T> result(a - src.x, 0 - src.y);
         return result;
     }
 
-    friend inline CustomComplex operator +(const double &a, CustomComplex& src) {
-        CustomComplex result(a + src.x, src.y);
+    template<class T>
+     friend inline CustomComplex<T> operator +(const double &a, CustomComplex<T>& src) {
+        CustomComplex<T> result(a + src.x, src.y);
         return result;
     }
 
-    friend inline CustomComplex operator +(CustomComplex a, CustomComplex b) {
-        CustomComplex result(a.x + b.x, a.y+b.y);
+    template<class T>
+     friend inline CustomComplex<T> operator +(CustomComplex<T> a, CustomComplex<T> b) {
+        CustomComplex<T> result(a.x + b.x, a.y+b.y);
         return result;
     }
 
-    friend inline CustomComplex operator /(CustomComplex a, CustomComplex b) {
+    template<class T>
+     friend inline CustomComplex<T> operator /(CustomComplex<T> a, CustomComplex<T> b) {
 
-        CustomComplex b_conj = CustomComplex_conj(b);
-        CustomComplex numerator = a * b_conj;
-        CustomComplex denominator = b * b_conj;
+        CustomComplex<T> b_conj = CustomComplex_conj(&b);
+        CustomComplex<T> numerator = a * b_conj;
+        CustomComplex<T> denominator = b * b_conj;
 
         double re_this = numerator.x / denominator.x;
         double im_this = numerator.y / denominator.x;
 
-        CustomComplex result(re_this, im_this);
+        CustomComplex<T> result(re_this, im_this);
         return result;
     }
 
-    friend inline CustomComplex operator /(CustomComplex a, double b) {
-       CustomComplex result(a.x/b, a.y/b);
+    template<class T>
+     friend inline CustomComplex<T> operator /(CustomComplex<T> a, T b) {
+       CustomComplex<T> result(a.x/b, a.y/b);
        return result;
     }
 
-    friend inline CustomComplex CustomComplex_conj(const CustomComplex& src) ;
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) ;
 
-    friend inline double CustomComplex_abs(const CustomComplex& src) ;
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>& src) ;
 
-    friend inline double CustomComplex_real( const CustomComplex& src) ;
+    template<class T>
+     friend inline double CustomComplex_abs(const CustomComplex<T>& src) ;
 
-    friend inline double CustomComplex_imag( const CustomComplex& src) ;
-#pragma omp end declare target
+    template<class T>
+     friend inline double CustomComplex_real( const CustomComplex<T>* src) ;
+
+    template<class T>
+     friend inline double CustomComplex_imag( const CustomComplex<T>* src) ;
+
+    template<class T>
+     friend inline double CustomComplex_real( const CustomComplex<T>& src) ;
+
+    template<class T>
+     friend inline double CustomComplex_imag( const CustomComplex<T>& src) ;
+
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T* b) ;
+
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T b) ;
+
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
+
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, T* b) ;
+
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
 };
 
-//#pragma omp declare target
-inline CustomComplex CustomComplex_conj(const CustomComplex& src) {
 
-    double re_this = src.x;
-    double im_this = -1 * src.y;
-
-    CustomComplex result(re_this, im_this);
-    return result;
-
-}
-
-inline double CustomComplex_abs(const CustomComplex& src) {
-    double re_this = src.x * src.x;
-    double im_this = src.y * src.y;
-
-    double result = sqrt(re_this+im_this);
+/* Return the conjugate of a complex number 
+flop
+*/
+template<class T>
+inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) {
+    T re_this = src->x;
+    T im_this = -1 * src->y;
+    CustomComplex<T> result(re_this, im_this);
     return result;
 }
 
-inline double CustomComplex_real( const CustomComplex& src) {
+template<class T>
+inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>& src) {
+    T re_this = src.x;
+    T im_this = -1 * src.y;
+    CustomComplex<T> result(re_this, im_this);
+    return result;
+}
+
+/*
+ * Return the absolute of a complex number 
+ */
+template<class T>
+inline double CustomComplex_abs(const CustomComplex<T>& src) {
+    T re_this = src.x * src.x;
+    T im_this = src.y * src.y;
+
+    T result = sqrt(re_this+im_this);
+    return result;
+}
+
+/*
+ * Return the real part of a complex number 
+ */
+template<class T>
+inline double CustomComplex_real( const CustomComplex<T>* src) {
+    return src->x;
+}
+
+template<class T>
+inline double CustomComplex_real( const CustomComplex<T>& src) {
     return src.x;
 }
 
-inline double CustomComplex_imag( const CustomComplex& src) {
+/*
+ * Return the imaginary part of a complex number 
+ */
+template<class T>
+inline double CustomComplex_imag( const CustomComplex<T>* src) {
+    return src->y;
+}
+
+template<class T>
+inline double CustomComplex_imag( const CustomComplex<T>& src) {
     return src.y;
 }
+
+template<class T>
+inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T* b) {
+   T re_this = src->x * (*b);
+   T im_this = src->y * (*b);
+   return (CustomComplex<T>(re_this, im_this));
+}
+
+template<class T>
+inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T b) {
+   T re_this = src->x * b;
+   T im_this = src->y * b;
+   return (CustomComplex<T>(re_this, im_this));
+}
+
+template<class T>
+inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
+    T x_this = a->x * b->x - a->y*b->y ;
+    T y_this = a->x * b->y + a->y*b->x ;
+    CustomComplex<T> result(x_this, y_this);
+    return (result);
+}
+
+template<class T>
+inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
+        CustomComplex<T> result(a->x - b->x, a->y - b->y);
+        return result;
+}
+
+template<class T>
+inline CustomComplex<T> CustomComplex_minus(T* a, const CustomComplex<T>* src) {
+        CustomComplex<T> result(*a - src->x, 0 - src->y);
+        return result;
+}
+
+//GPP Function definition
+template<class T>
+void noflagOCC_cudaKernel(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex<double> *wtilde_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im);
+
+//FF Function definition
+//template<class T>
+inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> &schDttt, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+
+//template<class T>
+inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+
+//template<class T>
+void d_achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsntemp, CustomComplex<double> *aqsmtemp, CustomComplex<double> *I_epsR_array, double *vcoul, double *achsDtemp_re, double *achsDtemp_im);
+
+//template<class T>
+void d_asxDtemp_Kernel(int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double occ, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *asxDtemp_re, double *asxDtemp_im);
+
+void d_achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *ach2Dtemp, double *achDtemp_cor_re, double *achDtemp_cor_im, CustomComplex<double> *achDtemp_corb);
+
+//TestUVM functions
+void cudaKernel(int *a, int N, int M);
 
 #endif
 
