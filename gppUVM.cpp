@@ -4,6 +4,7 @@
 #define nstart 0
 #define nend 3
 #define __OMPOFFLOAD__ 1
+#define __reductionVersion__ 1
 
 inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, CustomComplex<double>  *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, CustomComplex<double> achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
 {
@@ -144,11 +145,18 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 
     gettimeofday(&startKernelTimer, NULL);
 
-#pragma omp target teams distribute parallel for collapse(2)\
+#if __reductionVersion__
+#pragma omp target teams distribute collapse(2)\
     map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
     map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend]) \
     reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
+#else
+#pragma omp target teams distribute parallel for collapse(2)\
+    map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
+    map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend])
+#endif
 #else
     gettimeofday(&startKernelTimer, NULL);
 #pragma omp parallel for
@@ -163,6 +171,10 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
             double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
+#if __reductionVersion__
+#pragma omp parallel for\
+    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
+#endif
             for(int ig = 0; ig<ncouls; ++ig)
             {
                 for(int iw = nstart; iw < nend; ++iw)
@@ -184,23 +196,32 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
                     CustomComplex<double> delw = wtilde_array[my_igp*ncouls+ig] * CustomComplex_conj(wdiff) * (1/CustomComplex_real((wdiff * CustomComplex_conj(wdiff)))); 
                     CustomComplex<double> sch_array = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]) * aqsntemp[n1*ncouls+ig] * delw * I_eps_array[my_igp*ncouls+ig] * 0.5*vcoul[igp];
 #endif
+#if __reductionVersion__
+                    achtemp_re_loc[iw] = CustomComplex_real(&sch_array);
+                    achtemp_im_loc[iw] = CustomComplex_imag(&sch_array);
+#else
                     achtemp_re_loc[iw] += CustomComplex_real(&sch_array);
                     achtemp_im_loc[iw] += CustomComplex_imag(&sch_array);
+#endif
                 }
+#if __reductionVersion__
+                ach_re0 += achtemp_re_loc[0];
+                ach_re1 += achtemp_re_loc[1];
+                ach_re2 += achtemp_re_loc[2];
+                ach_im0 += achtemp_im_loc[0];
+                ach_im1 += achtemp_im_loc[1];
+                ach_im2 += achtemp_im_loc[2];
+#endif
             }
-            ach_re0 += achtemp_re_loc[0];
-            ach_re1 += achtemp_re_loc[1];
-            ach_re2 += achtemp_re_loc[2];
-            ach_im0 += achtemp_im_loc[0];
-            ach_im1 += achtemp_im_loc[1];
-            ach_im2 += achtemp_im_loc[2];
-//            for(int iw = nstart; iw < nend; ++iw)
-//            {
-//#pragma omp atomic
-//                achtemp_re[iw] += achtemp_re_loc[iw];
-//#pragma omp atomic
-//                achtemp_im[iw] += achtemp_im_loc[iw];
-//            }
+#if !__reductionVersion__
+            for(int iw = nstart; iw < nend; ++iw)
+            {
+#pragma omp atomic
+                achtemp_re[iw] += achtemp_re_loc[iw];
+#pragma omp atomic
+                achtemp_im[iw] += achtemp_im_loc[iw];
+            }
+#endif
         } //ngpown
     } //number_bands
 
@@ -212,12 +233,14 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
 #endif
 
+#if __reductionVersion__
     achtemp_re[0] = ach_re0;
     achtemp_re[1] = ach_re1;
     achtemp_re[2] = ach_re2;
     achtemp_im[0] = ach_im0;
     achtemp_im[1] = ach_im1;
     achtemp_im[2] = ach_im2;
+#endif
 }
 
 int main(int argc, char** argv)
