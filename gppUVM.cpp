@@ -129,15 +129,23 @@ void till_nvband(int number_bands, int nvband, int ngpown, int ncouls, CustomCom
     }
 }
 
-void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex<double> *wtilde_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im)
+void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex<double> *wtilde_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im, double &elapsedKernelTimer)
 {
+    timeval startKernelTimer, endKernelTimer;
 #if __OMPOFFLOAD__ 
+#pragma omp target enter data map(alloc:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
+#pragma omp target update to(aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
+
+    gettimeofday(&startKernelTimer, NULL);
+
 #pragma omp target teams distribute parallel for collapse(2)\
-    thread_limit(32)\
     map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
     map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend]) 
 #else
+    gettimeofday(&startKernelTimer, NULL);
 #pragma omp parallel for
 #endif
 
@@ -184,6 +192,14 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
             }
         } //ngpown
     } //number_bands
+
+    gettimeofday(&endKernelTimer, NULL);
+    elapsedKernelTimer = (endKernelTimer.tv_sec - startKernelTimer.tv_sec) +1e-6*(endKernelTimer.tv_usec - startKernelTimer.tv_usec);
+
+#if __OMPOFFLOAD__
+#pragma omp target exit data map(delete: aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
+#endif
 }
 
 int main(int argc, char** argv)
@@ -220,6 +236,11 @@ int main(int argc, char** argv)
     const double limittwo = pow(0.5,2);
     const double e_n1kq= 6.0; 
     const double occ=1.0;
+
+    //Start the timer before the work begins.
+    double elapsedKernelTimer, elapsedTimer;
+    timeval startTimer, endTimer;
+    gettimeofday(&startTimer, NULL);
 
 
     //OpenMP Printing of threads on Host and Device
@@ -342,11 +363,6 @@ int main(int argc, char** argv)
             if(wx_array[iw] < to1) wx_array[iw] = to1;
         }
 
-    //Start the timer before the work begins.
-    timeval startTimer, endTimer, 
-        startKernelTimer, endKernelTimer;
-    gettimeofday(&startTimer, NULL);
-
     //0-nvband iterations
     till_nvband(number_bands, nvband, ngpown, ncouls, asxtemp, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, inv_igp_index, indinv, vcoul);
 
@@ -355,12 +371,10 @@ int main(int argc, char** argv)
     for(int n1 = 0; n1<number_bands; ++n1) 
         reduce_achstemp(n1, number_bands, inv_igp_index, ncouls,aqsmtemp, aqsntemp, I_eps_array, achstemp, indinv, ngpown, vcoul, numThreads);
 
-    gettimeofday(&startKernelTimer, NULL);
-    noflagOCC_solver(number_bands, ngpown, ncouls, inv_igp_index, indinv, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, vcoul, achtemp_re, achtemp_im);
+    noflagOCC_solver(number_bands, ngpown, ncouls, inv_igp_index, indinv, wx_array, wtilde_array, aqsmtemp, aqsntemp, I_eps_array, vcoul, achtemp_re, achtemp_im, elapsedKernelTimer);
 
     gettimeofday(&endTimer, NULL);
-    double elapsedKernelTimer = (endTimer.tv_sec - startKernelTimer.tv_sec) +1e-6*(endTimer.tv_usec - startKernelTimer.tv_usec);
-    double elapsedTimer = (endTimer.tv_sec - startTimer.tv_sec) +1e-6*(endTimer.tv_usec - startTimer.tv_usec);
+    elapsedTimer = (endTimer.tv_sec - startTimer.tv_sec) +1e-6*(endTimer.tv_usec - startTimer.tv_usec);
 
     printf("\n Final achtemp\n");
     for(int iw=nstart; iw<nend; ++iw)
