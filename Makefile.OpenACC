@@ -1,6 +1,11 @@
 EXE = gpp_openACC.ex
 SRC = gpp_openACC.cpp
 
+
+#CXX = xlc++
+#CXX = CC 
+#CXX = g++
+#CXX = clang++
 CXX = pgc++
 
 LINK = ${CXX}
