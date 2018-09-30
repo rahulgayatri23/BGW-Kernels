@@ -1,58 +1,30 @@
-#EXE = gppKer_OpenACC.ex
-#SRC = gppKer_OpenACC.cpp 
-EXE = gppCustomComplex_OpenACC.ex
-SRC = gppCustomComplex_OpenACC.cpp 
+EXE = gpp_openACC.ex
+SRC = gpp_openACC.cpp
 
-#CXX = xlc++
-#CXX = CC 
-#CXX = g++
-#CXX = clang++
 CXX = pgc++
 
 LINK = ${CXX}
 
-ifeq ($(CXX),g++)
-	CXXFLAGS= -g -O3 -std=c++11 -fopenacc
-	LINKFLAGS=-fopenacc
-endif 
-
-ifeq ($(CXX),xlc++)
-#	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp
-#	LINKFLAGS=-qsmp
-	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp=noauto:omp -qoffload #-Xptxas -v
-	LINKFLAGS=-qsmp=noauto:omp -qoffload 
-endif 
-
-ifeq ($(CXX),clang++)
-	CXXFLAGS=-O3 -std=gnu++11 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${CUDA_HOME}
-	LINKFLAGS=-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${CUDA_HOME}
-endif 
-
-ifeq ($(CXX),icc)
-	CXXFLAGS=-O3 -qopenmp -qopt-report=5
-	CXXFLAGS+=xCORE_AVX2
-#	CXXFLAGS+=-xMIC_AVX512
-	LINKFLAGS=-qopenmp
-endif 
-
 ifeq ($(CXX),pgc++)
-	CXXFLAGS=-O3 -std=c++11 --gnu_extensions -g -Munroll
-	CXXFLAGS+=-acc -ta=nvidia 
-	#CXXFLAGS+=-Minfo=accel 
+	CXXFLAGS=-fast -std=c++11 --gnu_extensions -g -Munroll
+	#CXXFLAGS+=-acc -ta=multicore
+	CXXFLAGS+=-acc -ta=tesla:cc70
+	CXXFLAGS+=-Minfo=accel
+	CXXFLAGS+=-ta=tesla:keepgpu -ta=tesla:keepptx
 	LINKFLAGS=-acc
 	LINKFLAGS+=-ta=tesla:cc70
 	#LINKFLAGS+=-ta=tesla:cc60
-endif 
+endif
 
 OBJ = $(SRC:.cpp=.o)
 
-$(EXE): $(OBJ) 
+$(EXE): $(OBJ)
 	$(CXX) $(OBJ) -o $(EXE) $(LINKFLAGS)
 
-$(OBJ): $(SRC) 
+$(OBJ): $(SRC)
 	$(CXX) -c $(SRC) $(CXXFLAGS)
 
 
-clean: 
+clean:
 	rm -f $(OBJ) $(EXE)
 
