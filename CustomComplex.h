@@ -10,9 +10,6 @@
 #include <ctime>
 #include <stdio.h>
 #include <sys/time.h>
-#include <vector_types.h>
-#include <cuda.h>
-#include <cuda_runtime_api.h>
 using namespace std;
 
 template<class type>
@@ -181,6 +178,9 @@ class CustomComplex {
     }
 
     template<class T>
+     friend inline void CustomComplex_equals(const CustomComplex<T>* src, CustomComplex<T>* dest) ;
+
+    template<class T>
      friend inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) ;
 
     template<class T>
@@ -308,6 +308,12 @@ inline CustomComplex<T> CustomComplex_minus(T* a, const CustomComplex<T>* src) {
         CustomComplex<T> result(*a - src->x, 0 - src->y);
         return result;
 }
+
+template<class T>
+inline void CustomComplex_equals(const CustomComplex<T>* src, CustomComplex<T>* dest) {
+    *dest = CustomComplex<T>(src->x, src->y);
+}
+
 
 //GPP Function definition
 template<class T>
