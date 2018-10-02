@@ -1,5 +1,5 @@
 #include "./CustomComplex.h"
-#include "./cudaAlloc.h"
+//#include "./cudaAlloc.h"
 
 #define nstart 0
 #define nend 3
@@ -137,91 +137,104 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     double ach_re0 = 0.00, ach_re1 = 0.00, ach_re2 = 0.00, \
         ach_im0 = 0.00, ach_im1 = 0.00, ach_im2 = 0.00;
 
-    CustomComplex<double> *d_aqsmtemp, *d_aqsntemp, *d_wtilde_array, *d_I_eps_array;
-    double *d_wx_array, *d_vcoul;
-    int *d_inv_igp_index, *d_indinv;
-    //Allocate memory on device
-    CudaSafeCall(cudaMallocManaged((void**) &d_wx_array, (nend-nstart)*sizeof(double)));
-    CudaSafeCall(cudaMallocManaged((void**) &d_vcoul, ncouls*sizeof(double)));
-    CudaSafeCall(cudaMallocManaged((void**) &d_inv_igp_index, ngpown*sizeof(int)));
-    CudaSafeCall(cudaMallocManaged((void**) &d_indinv, (ncouls+1)*sizeof(int)));
-    CudaSafeCall(cudaMallocManaged((void**) &d_aqsmtemp, number_bands*ncouls*sizeof(CustomComplex<double>)));
-    CudaSafeCall(cudaMallocManaged((void**) &d_aqsntemp, number_bands*ncouls*sizeof(CustomComplex<double>)));
-    CudaSafeCall(cudaMallocManaged((void**) &d_wtilde_array, ngpown*ncouls*sizeof(CustomComplex<double>)));
-    CudaSafeCall(cudaMallocManaged((void**) &d_I_eps_array, ngpown*ncouls*sizeof(CustomComplex<double>)));
-
-    //CudaMemCpy
-    CudaSafeCall(cudaMemcpy(d_wx_array, wx_array, (nend-nstart)*sizeof(double), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_indinv, indinv, (ncouls+1)*sizeof(int), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(CustomComplex<double>), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(CustomComplex<double>), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_wtilde_array, wtilde_array, ngpown*ncouls*sizeof(CustomComplex<double>), cudaMemcpyHostToDevice));
-    CudaSafeCall(cudaMemcpy(d_I_eps_array, I_eps_array, ngpown*ncouls*sizeof(CustomComplex<double>), cudaMemcpyHostToDevice));
+#if __OMPOFFLOAD__ 
+#pragma omp target enter data map(alloc:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
+#pragma omp target update to(aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
 
     gettimeofday(&startKernelTimer, NULL);
 
-#pragma omp target teams distribute collapse(2)\
-    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2) \
-    is_device_ptr(d_wx_array, d_vcoul, d_inv_igp_index, d_indinv, d_aqsmtemp, d_aqsntemp, d_wtilde_array, d_I_eps_array)
+#if __reductionVersion__
+#pragma omp target teams distribute parallel for\
+    map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
+    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
+#else
+#pragma omp target teams distribute parallel for collapse(2)\
+    map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
+    map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend])
+#endif
+#else
+    gettimeofday(&startKernelTimer, NULL);
+#pragma omp parallel for\
+    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
+#endif
+
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
-            int indigp = d_inv_igp_index[my_igp];
-            int igp = d_indinv[indigp];
+            int indigp = inv_igp_index[my_igp];
+            int igp = indinv[indigp];
             double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
+#if __reductionVersion__
 #pragma omp parallel for\
     reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
+#endif
             for(int ig = 0; ig<ncouls; ++ig)
             {
                 for(int iw = nstart; iw < nend; ++iw)
                 {
-                    CustomComplex<double> wdiff = CustomComplex_minus(&d_wx_array[iw], &d_wtilde_array[my_igp*ncouls +ig]);
+                    CustomComplex<double> wdiff = CustomComplex_minus(&wx_array[iw], &wtilde_array[my_igp*ncouls +ig]);
                     CustomComplex<double> wdiff_conj = CustomComplex_conj(&wdiff);
-                    CustomComplex<double> delw_store1 = CustomComplex_product(&d_wtilde_array[my_igp*ncouls +ig], &wdiff_conj);
+                    CustomComplex<double> delw_store1 = CustomComplex_product(&wtilde_array[my_igp*ncouls +ig], &wdiff_conj);
                     CustomComplex<double> delw_store2 = CustomComplex_product(&wdiff, &wdiff_conj);
                     double delwr = 1/CustomComplex_real(&delw_store2);
                     CustomComplex<double> delw = CustomComplex_product(&delw_store1, &delwr);
-                    CustomComplex<double> aqsmtemp_conj = CustomComplex_conj(&d_aqsmtemp[n1*ncouls+igp]);
-                    CustomComplex<double> sch_store1 = CustomComplex_product(&aqsmtemp_conj, &d_aqsntemp[n1*ncouls+igp]);
-                    CustomComplex<double> sch_store2 = CustomComplex_product(&delw, &d_I_eps_array[my_igp*ncouls +ig]);
+                    CustomComplex<double> aqsmtemp_conj = CustomComplex_conj(&aqsmtemp[n1*ncouls+igp]);
+                    CustomComplex<double> sch_store1 = CustomComplex_product(&aqsmtemp_conj, &aqsntemp[n1*ncouls+igp]);
+                    CustomComplex<double> sch_store2 = CustomComplex_product(&delw, &I_eps_array[my_igp*ncouls +ig]);
                     CustomComplex<double> sch_store3 = CustomComplex_product(&sch_store1, &sch_store2);
-                    CustomComplex<double> sch_array = CustomComplex_product(&sch_store3, 0.5*d_vcoul[igp]);
+                    CustomComplex<double> sch_array = CustomComplex_product(&sch_store3, 0.5*vcoul[igp]);
+#if __reductionVersion__
                     achtemp_re_loc[iw] = CustomComplex_real(&sch_array);
                     achtemp_im_loc[iw] = CustomComplex_imag(&sch_array);
+#else
+                    achtemp_re_loc[iw] += CustomComplex_real(&sch_array);
+                    achtemp_im_loc[iw] += CustomComplex_imag(&sch_array);
+#endif
                 }
+#if __reductionVersion__
                 ach_re0 += achtemp_re_loc[0];
                 ach_re1 += achtemp_re_loc[1];
                 ach_re2 += achtemp_re_loc[2];
                 ach_im0 += achtemp_im_loc[0];
                 ach_im1 += achtemp_im_loc[1];
                 ach_im2 += achtemp_im_loc[2];
+#endif
             }
+#if !__reductionVersion__
+            for(int iw = nstart; iw < nend; ++iw)
+            {
+#pragma omp atomic
+                achtemp_re[iw] += achtemp_re_loc[iw];
+#pragma omp atomic
+                achtemp_im[iw] += achtemp_im_loc[iw];
+            }
+#endif
         } //ngpown
     } //number_bands
 
     gettimeofday(&endKernelTimer, NULL);
     elapsedKernelTimer = (endKernelTimer.tv_sec - startKernelTimer.tv_sec) +1e-6*(endKernelTimer.tv_usec - startKernelTimer.tv_usec);
 
+#if __OMPOFFLOAD__
+#pragma omp target exit data map(delete: aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
+#endif
+
+#if __reductionVersion__
     achtemp_re[0] = ach_re0;
     achtemp_re[1] = ach_re1;
     achtemp_re[2] = ach_re2;
     achtemp_im[0] = ach_im0;
     achtemp_im[1] = ach_im1;
     achtemp_im[2] = ach_im2;
-
-    cudaFree(d_indinv);
-    cudaFree(d_inv_igp_index);
-    cudaFree(d_wx_array);
-    cudaFree(d_wtilde_array);
-    cudaFree(d_aqsmtemp);
-    cudaFree(d_aqsntemp);
-    cudaFree(d_I_eps_array);
-    cudaFree(d_vcoul);
+#endif
 }
 
 int main(int argc, char** argv)
