@@ -2,8 +2,8 @@ EXE = gppUVM.ex
 SRC = gppUVM.cpp 
 
 #CXX = g++
-#CXX = xlc++_r
-CXX = icc
+CXX = xlc++_r
+#CXX = icc
 
 LINK = ${CXX}
 
