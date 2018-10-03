@@ -5,7 +5,7 @@ using namespace std;
 #define nstart 0
 #define nend 3
 
-#define reductionVersion 1
+#define __reductionVersion__ 0
 
 double elapsedTime(timeval start_time, timeval end_time)
 {
@@ -204,14 +204,21 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     double achtemp_re0 = 0.00, achtemp_re1 = 0.00, achtemp_re2 = 0.00, \
                          achtemp_im0 = 0.00, achtemp_im1 = 0.00, achtemp_im2 = 0.00;
 
-#pragma acc parallel loop gang present(inv_igp_index, indinv, wtilde_array, wx_array, aqsmtemp, \
+#if __reductionVersion__
+#pragma acc parallel loop gang collapse(2) present(inv_igp_index, indinv, wtilde_array, wx_array, aqsmtemp, \
      aqsntemp, I_eps_array, vcoul)\
-    num_gangs(number_bands) vector_length(32) \
+    reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)//\
+    num_gangs(number_bands) vector_length(32) 
+#else
+#pragma acc parallel loop gang vector present(inv_igp_index, indinv, wtilde_array, wx_array, aqsmtemp, \
+     aqsntemp, I_eps_array, vcoul)\
     reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
+#endif
     for(int n1 = 0; n1<number_bands; ++n1)
     {
-#pragma acc loop vector\
-    reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
+#if !__reductionVersion__
+#pragma acc loop vector
+#endif
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
             int indigp = inv_igp_index[my_igp];
@@ -222,7 +229,12 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
             double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
+#if __reductionVersion__
+#pragma acc loop vector\
+    reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)
+#else
 #pragma acc loop seq
+#endif
             for(int ig = 0; ig<ncouls; ++ig)
             {
 #pragma acc loop seq
@@ -234,19 +246,26 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
                     double sch_array_re = CustomComplex_real(sch_array);
                     double sch_array_im = CustomComplex_imag(sch_array);
 
+#if __reductionVersion__
+                    achtemp_re_loc[iw] = sch_array_re ;
+                    achtemp_im_loc[iw] = sch_array_im ;
+#else
                     achtemp_re_loc[iw] += sch_array_re ;
                     achtemp_im_loc[iw] += sch_array_im ;
+#endif
+
                 }
+#if __reductionVersion__
+                achtemp_re0 += achtemp_re_loc[0];
+                achtemp_re1 += achtemp_re_loc[1];
+                achtemp_re2 += achtemp_re_loc[2];
+                achtemp_im0 += achtemp_im_loc[0];
+                achtemp_im1 += achtemp_im_loc[1];
+                achtemp_im2 += achtemp_im_loc[2];
+#endif
             }
 
-#if reductionVersion
-            achtemp_re0 += achtemp_re_loc[0];
-            achtemp_re1 += achtemp_re_loc[1];
-            achtemp_re2 += achtemp_re_loc[2];
-            achtemp_im0 += achtemp_im_loc[0];
-            achtemp_im1 += achtemp_im_loc[1];
-            achtemp_im2 += achtemp_im_loc[2];
-#else
+#if !__reductionVersion__
 #pragma acc loop seq
             for(int iw = nstart; iw < nend; ++iw)
             {
@@ -258,7 +277,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 #endif
         } //ngpown
     } //number_bands
-#if reductionVersion
+#if __reductionVersion__
     achtemp_re[0] = achtemp_re0;
     achtemp_re[1] = achtemp_re1;
     achtemp_re[2] = achtemp_re2;
