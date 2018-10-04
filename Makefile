@@ -14,8 +14,8 @@ ifeq ($(CXX),CC)
     CXXFLAGS=-O3 -std=c++11 -qopenmp -qopt-report=5
     CXXFLAGS+=-qopenmp-offload=host #For offloading
     #CXXFLAGS+=-qno-openmp-offload #For disabling offloading
-    #CXXFLAGS+=-xCORE-AVX2
-    CXXFLAGS+=-xMIC-AVX512
+    CXXFLAGS+=-xCORE-AVX2
+    #CXXFLAGS+=-xMIC-AVX512
     LINKFLAGS=-qopenmp #-qopenmp-offload=mic
     #LINKFLAGS+=-dynamic #Dynamic flag gives runtime issues with OMP4.5
 endif 
