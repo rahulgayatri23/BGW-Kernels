@@ -1,22 +1,22 @@
-#include "./thrustComplex.h"
+#include "./CustomComplex.h"
 //#include "./cudaAlloc.h"
 
 #define nstart 0
 #define nend 3
-#define __OMPOFFLOAD__ 1
+#define __OMPOFFLOAD__ 0
 #define __reductionVersion__ 1
 
-inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, CustomComplex  *aqsmtemp, CustomComplex *aqsntemp, CustomComplex *I_eps_array, CustomComplex achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
+inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, CustomComplex<double>  *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, CustomComplex<double> achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
 {
     double to1 = 1e-6;
-    CustomComplex schstemp(0.0, 0.0);;
+    CustomComplex<double> schstemp(0.0, 0.0);;
 
     for(int my_igp = 0; my_igp< ngpown; my_igp++)
     {
-        CustomComplex schs(0.0, 0.0);
-        CustomComplex matngmatmgp(0.0, 0.0);
-        CustomComplex matngpmatmg(0.0, 0.0);
-        CustomComplex mygpvar1(0.00, 0.00), mygpvar2(0.00, 0.00);
+        CustomComplex<double> schs(0.0, 0.0);
+        CustomComplex<double> matngmatmgp(0.0, 0.0);
+        CustomComplex<double> matngpmatmg(0.0, 0.0);
+        CustomComplex<double> mygpvar1(0.00, 0.00), mygpvar2(0.00, 0.00);
         int indigp = inv_igp_index[my_igp];
         int igp = indinv[indigp];
         if(indigp == ncouls)
@@ -24,19 +24,19 @@ inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int nc
 
         if(!(igp > ncouls || igp < 0)){
 
-            mygpvar1 = thrust::conj(aqsmtemp[n1*ncouls+igp]);
+            mygpvar1 = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]);
             mygpvar2 = aqsntemp[n1*ncouls+igp];
             schs = I_eps_array[my_igp*ncouls+igp];
             matngmatmgp = mygpvar1 * aqsntemp[n1*ncouls+igp];
 
-            if(thrust::abs(schs) > to1)
+            if(CustomComplex_abs(schs) > to1)
                 schstemp += matngmatmgp * schs;
             }
             else 
             {
                 for(int ig=1; ig<ncouls; ++ig)
                 {
-                    CustomComplex mult_result(I_eps_array[my_igp*ncouls+ig] * mygpvar1);
+                    CustomComplex<double> mult_result(I_eps_array[my_igp*ncouls+ig] * mygpvar1);
                     schstemp -= aqsntemp[n1*ncouls +igp] * mult_result;
                 }
             }
@@ -46,37 +46,37 @@ inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int nc
     }
 }
 
-inline void flagOCC_solver(double wxt, CustomComplex *wtilde_array, int my_igp, int n1, CustomComplex *aqsmtemp, CustomComplex *aqsntemp, CustomComplex *I_eps_array, CustomComplex &ssxt, CustomComplex &scht,int ncouls, int igp, int number_bands, int ngpown)
+inline void flagOCC_solver(double wxt, CustomComplex<double> *wtilde_array, int my_igp, int n1, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, CustomComplex<double> &ssxt, CustomComplex<double> &scht,int ncouls, int igp, int number_bands, int ngpown)
 {
-    CustomComplex expr0(0.00, 0.00);
-    CustomComplex expr(0.5, 0.5);
-    CustomComplex matngmatmgp(0.0, 0.0);
-    CustomComplex matngpmatmg(0.0, 0.0);
+    CustomComplex<double> expr0(0.00, 0.00);
+    CustomComplex<double> expr(0.5, 0.5);
+    CustomComplex<double> matngmatmgp(0.0, 0.0);
+    CustomComplex<double> matngpmatmg(0.0, 0.0);
 
     for(int ig=0; ig<ncouls; ++ig)
     {
-        CustomComplex wtilde = wtilde_array[my_igp*ncouls+ig];
-        CustomComplex wtilde2 = wtilde * wtilde;
-        CustomComplex Omega2 = wtilde2*I_eps_array[my_igp*ncouls+ig];
-        CustomComplex mygpvar1 = thrust::conj(aqsmtemp[n1*ncouls+igp]);
-        CustomComplex mygpvar2 = aqsmtemp[n1*ncouls+igp];
-        CustomComplex matngmatmgp = aqsntemp[n1*ncouls+ig] * mygpvar1;
-        if(ig != igp) matngpmatmg = thrust::conj(aqsmtemp[n1*ncouls+ig]) * mygpvar2;
+        CustomComplex<double> wtilde = wtilde_array[my_igp*ncouls+ig];
+        CustomComplex<double> wtilde2 = wtilde * wtilde;
+        CustomComplex<double> Omega2 = wtilde2*I_eps_array[my_igp*ncouls+ig];
+        CustomComplex<double> mygpvar1 = CustomComplex_conj(aqsmtemp[n1*ncouls+igp]);
+        CustomComplex<double> mygpvar2 = aqsmtemp[n1*ncouls+igp];
+        CustomComplex<double> matngmatmgp = aqsntemp[n1*ncouls+ig] * mygpvar1;
+        if(ig != igp) matngpmatmg = CustomComplex_conj(aqsmtemp[n1*ncouls+ig]) * mygpvar2;
 
         double ssxcutoff;
         double to1 = 1e-6;
         double sexcut = 4.0;
         double limitone = 1.0/(to1*4.0);
         double limittwo = pow(0.5,2);
-        CustomComplex sch(0.00, 0.00), ssx(0.00, 0.00);
+        CustomComplex<double> sch(0.00, 0.00), ssx(0.00, 0.00);
     
-        CustomComplex wdiff = wxt - wtilde;
+        CustomComplex<double> wdiff = wxt - wtilde;
     
-        CustomComplex cden = wdiff;
-        double rden = 1/(cden * thrust::conj(cden)).real();
-        CustomComplex delw = wtilde * thrust::conj(cden) * rden;
-        double delwr = (delw * thrust::conj(delw)).real();
-        double wdiffr = (wdiff * thrust::conj(wdiff)).real();
+        CustomComplex<double> cden = wdiff;
+        double rden = 1/CustomComplex_real(cden * CustomComplex_conj(cden));
+        CustomComplex<double> delw = wtilde * CustomComplex_conj(cden) * rden;
+        double delwr = CustomComplex_real(delw * CustomComplex_conj(delw));
+        double wdiffr = CustomComplex_real(wdiff * CustomComplex_conj(wdiff));
     
         if((wdiffr > limittwo) && (delwr < limitone))
         {
@@ -90,9 +90,9 @@ inline void flagOCC_solver(double wxt, CustomComplex *wtilde_array, int my_igp, 
         {
             sch = expr0;
             cden = wtilde2 * (0.50 + delw) * 4.00;
-            rden = (cden * thrust::conj(cden)).real();
+            rden = CustomComplex_real(cden * CustomComplex_conj(cden));
             rden = 1.00/rden;
-            ssx = -Omega2 * thrust::conj(cden) * delw * rden;
+            ssx = -Omega2 * CustomComplex_conj(cden) * delw * rden;
         }
         else
         {
@@ -100,8 +100,8 @@ inline void flagOCC_solver(double wxt, CustomComplex *wtilde_array, int my_igp, 
             ssx = expr0;
         }
     
-        ssxcutoff = thrust::abs(I_eps_array[my_igp*ngpown+ig]) * sexcut;
-        if((thrust::abs(ssx) > ssxcutoff) && (wxt < 0.00)) ssx = expr0;
+        ssxcutoff = CustomComplex_abs(I_eps_array[my_igp*ngpown+ig]) * sexcut;
+        if((CustomComplex_abs(ssx) > ssxcutoff) && (wxt < 0.00)) ssx = expr0;
 
         ssxt += matngmatmgp * ssx;
         scht += matngmatmgp * sch;
@@ -109,7 +109,7 @@ inline void flagOCC_solver(double wxt, CustomComplex *wtilde_array, int my_igp, 
 }
 
 
-void till_nvband(int number_bands, int nvband, int ngpown, int ncouls, CustomComplex *asxtemp, double *wx_array, CustomComplex *wtilde_array, CustomComplex *aqsmtemp, CustomComplex *aqsntemp, CustomComplex *I_eps_array, int *inv_igp_index, int *indinv, double *vcoul)
+void till_nvband(int number_bands, int nvband, int ngpown, int ncouls, CustomComplex<double> *asxtemp, double *wx_array, CustomComplex<double> *wtilde_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, int *inv_igp_index, int *indinv, double *vcoul)
 {
     const double occ=1.0;
 #pragma omp parallel for collapse(3)
@@ -121,8 +121,8 @@ void till_nvband(int number_bands, int nvband, int ngpown, int ncouls, CustomCom
             {
                  int indigp = inv_igp_index[my_igp];
                  int igp = indinv[indigp];
-                 CustomComplex ssxt(0.00, 0.00);
-                 CustomComplex scht(0.00, 0.00);
+                 CustomComplex<double> ssxt(0.00, 0.00);
+                 CustomComplex<double> scht(0.00, 0.00);
                  flagOCC_solver(wx_array[iw], wtilde_array, my_igp, n1, aqsmtemp, aqsntemp, I_eps_array, ssxt, scht, ncouls, igp, number_bands, ngpown);
                  asxtemp[iw] += ssxt * occ * vcoul[igp];
            }
@@ -130,7 +130,7 @@ void till_nvband(int number_bands, int nvband, int ngpown, int ncouls, CustomCom
     }
 }
 
-void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex *wtilde_array, CustomComplex *aqsmtemp, CustomComplex *aqsntemp, CustomComplex *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im, double &elapsedKernelTimer)
+void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_index, int *indinv, double *wx_array, CustomComplex<double> *wtilde_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, double *vcoul, double *achtemp_re, double *achtemp_im, double &elapsedKernelTimer)
 {
     timeval startKernelTimer, endKernelTimer;
     //Vars to use for reduction
@@ -138,15 +138,15 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
         ach_im0 = 0.00, ach_im1 = 0.00, ach_im2 = 0.00;
 
 #if __OMPOFFLOAD__ 
-//#pragma omp target enter data map(alloc:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
-//    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
-//#pragma omp target update to(aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+#pragma omp target enter data map(alloc:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
+    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
+#pragma omp target update to(aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
 
     gettimeofday(&startKernelTimer, NULL);
 
 #if __reductionVersion__
-#pragma omp target teams distribute parallel for collapse(2) \
+#pragma omp target teams distribute collapse(2) \
     map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
     reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)//\
@@ -176,46 +176,31 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
             double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
-//#if __reductionVersion__
-//#pragma omp parallel for\
-//    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
-//#endif
+#if __reductionVersion__ && __OMPOFFLOAD__
+#pragma omp parallel for\
+    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
+#endif
             for(int ig = 0; ig<ncouls; ++ig)
             {
                 for(int iw = nstart; iw < nend; ++iw)
                 {
-//                    CustomComplex wdiff = CustomComplex_minus(&wx_array[iw], &wtilde_array[my_igp*ncouls +ig]);
-//                    CustomComplex wdiff_conj = thrust::conj(&wdiff);
-//                    CustomComplex delw_store1 = CustomComplex_product(&wtilde_array[my_igp*ncouls +ig], &wdiff_conj);
-//                    CustomComplex delw_store2 = CustomComplex_product(&wdiff, &wdiff_conj);
-//                    double delwr = 1/CustomComplex_real(&delw_store2);
-//                    CustomComplex delw = CustomComplex_product(&delw_store1, &delwr);
-//                    CustomComplex aqsmtemp_conj = thrust::conj(&aqsmtemp[n1*ncouls+igp]);
-//                    CustomComplex sch_store1 = CustomComplex_product(&aqsmtemp_conj, &aqsntemp[n1*ncouls+igp]);
-//                    CustomComplex sch_store2 = CustomComplex_product(&delw, &I_eps_array[my_igp*ncouls +ig]);
-//                    CustomComplex sch_store3 = CustomComplex_product(&sch_store1, &sch_store2);
-//                    CustomComplex sch_array = CustomComplex_product(&sch_store3, 0.5*vcoul[igp]);
-
-
-//Using Thrust complex
-                    CustomComplex wdiff = wx_array[iw] - wtilde_array[my_igp*ncouls +ig];
-                    CustomComplex wdiff_conj = thrust::conj(wdiff);
-                    CustomComplex delw_store1 = wtilde_array[my_igp*ncouls +ig] * wdiff_conj;
-                    CustomComplex delw_store2 = wdiff * wdiff_conj;
-                    double delwr = 1/delw_store2.real();
-                    CustomComplex delw = delw_store1 * delwr;
-                    CustomComplex aqsmtemp_conj = thrust::conj(aqsmtemp[n1*ncouls+igp]);
-                    CustomComplex sch_store1 = aqsmtemp_conj * aqsntemp[n1*ncouls+igp];
-                    CustomComplex sch_store2 = delw * I_eps_array[my_igp*ncouls +ig];
-                    CustomComplex sch_store3 = sch_store1 * sch_store2;
-                    CustomComplex sch_array = sch_store3 * 0.5*vcoul[igp];
-//                    CustomComplex sch_array = aqsmtemp[n1*ncouls + ig];
+                    CustomComplex<double> wdiff = CustomComplex_minus(&wx_array[iw], &wtilde_array[my_igp*ncouls +ig]);
+                    CustomComplex<double> wdiff_conj = CustomComplex_conj(&wdiff);
+                    CustomComplex<double> delw_store1 = CustomComplex_product(&wtilde_array[my_igp*ncouls +ig], &wdiff_conj);
+                    CustomComplex<double> delw_store2 = CustomComplex_product(&wdiff, &wdiff_conj);
+                    double delwr = 1/CustomComplex_real(&delw_store2);
+                    CustomComplex<double> delw = CustomComplex_product(&delw_store1, &delwr);
+                    CustomComplex<double> aqsmtemp_conj = CustomComplex_conj(&aqsmtemp[n1*ncouls+igp]);
+                    CustomComplex<double> sch_store1 = CustomComplex_product(&aqsmtemp_conj, &aqsntemp[n1*ncouls+igp]);
+                    CustomComplex<double> sch_store2 = CustomComplex_product(&delw, &I_eps_array[my_igp*ncouls +ig]);
+                    CustomComplex<double> sch_store3 = CustomComplex_product(&sch_store1, &sch_store2);
+                    CustomComplex<double> sch_array = CustomComplex_product(&sch_store3, 0.5*vcoul[igp]);
 #if __reductionVersion__
-                    achtemp_re_loc[iw] = sch_array.real();
-                    achtemp_im_loc[iw] = sch_array.real();
+                    achtemp_re_loc[iw] = CustomComplex_real(&sch_array);
+                    achtemp_im_loc[iw] = CustomComplex_imag(&sch_array);
 #else
-                    achtemp_re_loc[iw] += sch_array.real();
-                    achtemp_im_loc[iw] += sch_array.imag();
+                    achtemp_re_loc[iw] += CustomComplex_real(&sch_array);
+                    achtemp_im_loc[iw] += CustomComplex_imag(&sch_array);
 #endif
                 }
 #if __reductionVersion__
@@ -308,6 +293,7 @@ int main(int argc, char** argv)
     }
     std::cout << "Number of OpenMP Threads = " << numThreads << endl;
 
+#if __OMPOFFLOAD__
 #pragma omp target map(tofrom: numTeams, numThreads)
 #pragma omp teams shared(numTeams) private(tid)
     {
@@ -325,9 +311,10 @@ int main(int argc, char** argv)
     }
     std::cout << "Number of OpenMP Teams = " << numTeams << std::endl;
     std::cout << "Number of OpenMP DEVICE Threads = " << numThreads << std::endl;
+#endif
 
     //Printing out the params passed.
-    std::cout << "Sizeof(CustomComplex = " << sizeof(CustomComplex) << " bytes" << std::endl;
+    std::cout << "Sizeof(CustomComplex<double> = " << sizeof(CustomComplex<double>) << " bytes" << std::endl;
     std::cout << "number_bands = " << number_bands \
         << "\t nvband = " << nvband \
         << "\t ncouls = " << ncouls \
@@ -336,30 +323,30 @@ int main(int argc, char** argv)
         << "\t nend = " << nend \
         << "\t nstart = " << nstart << endl;
    
-    CustomComplex expr0(0.00, 0.00);
-    CustomComplex expr(0.5, 0.5);
+    CustomComplex<double> expr0(0.00, 0.00);
+    CustomComplex<double> expr(0.5, 0.5);
     long double memFootPrint = 0.00;
 
     //ALLOCATE statements from fortran gppkernel.
-    CustomComplex *acht_n1_loc = new CustomComplex[number_bands];
-    memFootPrint += number_bands*sizeof(CustomComplex);
+    CustomComplex<double> *acht_n1_loc = new CustomComplex<double>[number_bands];
+    memFootPrint += number_bands*sizeof(CustomComplex<double>);
 
-    CustomComplex *achtemp = new CustomComplex[nend-nstart];
-    CustomComplex *asxtemp = new CustomComplex[nend-nstart];
-    CustomComplex *ssx_array = new CustomComplex[nend-nstart];
-    memFootPrint += 3*(nend-nstart)*sizeof(CustomComplex);
+    CustomComplex<double> *achtemp = new CustomComplex<double>[nend-nstart];
+    CustomComplex<double> *asxtemp = new CustomComplex<double>[nend-nstart];
+    CustomComplex<double> *ssx_array = new CustomComplex<double>[nend-nstart];
+    memFootPrint += 3*(nend-nstart)*sizeof(CustomComplex<double>);
 
-    CustomComplex *aqsmtemp = new CustomComplex[number_bands*ncouls];
-    CustomComplex *aqsntemp = new CustomComplex[number_bands*ncouls];
-    memFootPrint += 2*(number_bands*ncouls)*sizeof(CustomComplex);
+    CustomComplex<double> *aqsmtemp = new CustomComplex<double>[number_bands*ncouls];
+    CustomComplex<double> *aqsntemp = new CustomComplex<double>[number_bands*ncouls];
+    memFootPrint += 2*(number_bands*ncouls)*sizeof(CustomComplex<double>);
 
-    CustomComplex *I_eps_array = new CustomComplex[ngpown*ncouls];
-    CustomComplex *wtilde_array = new CustomComplex[ngpown*ncouls];
-    memFootPrint += 2*(ngpown*ncouls)*sizeof(CustomComplex);
+    CustomComplex<double> *I_eps_array = new CustomComplex<double>[ngpown*ncouls];
+    CustomComplex<double> *wtilde_array = new CustomComplex<double>[ngpown*ncouls];
+    memFootPrint += 2*(ngpown*ncouls)*sizeof(CustomComplex<double>);
 
-    CustomComplex *ssxa = new CustomComplex[ncouls];
+    CustomComplex<double> *ssxa = new CustomComplex<double>[ncouls];
     double *vcoul = new double[ncouls];
-    memFootPrint += ncouls*sizeof(CustomComplex);
+    memFootPrint += ncouls*sizeof(CustomComplex<double>);
     memFootPrint += ncouls*sizeof(double);
 
     int *inv_igp_index = new int[ngpown];
@@ -373,7 +360,7 @@ int main(int argc, char** argv)
     memFootPrint += 2*(nend-nstart)*sizeof(double);
 
     double wx_array[nend-nstart];
-    CustomComplex achstemp;
+    CustomComplex<double> achstemp;
                         
     //Print Memory Foot print 
     cout << "Memory Foot Print = " << memFootPrint / pow(1024,3) << " GBs" << endl;
@@ -434,11 +421,10 @@ int main(int argc, char** argv)
     printf("\n Final achtemp\n");
     for(int iw=nstart; iw<nend; ++iw)
     {
-        CustomComplex tmp(achtemp_re[iw], achtemp_im[iw]);
+        CustomComplex<double> tmp(achtemp_re[iw], achtemp_im[iw]);
         achtemp[iw] = tmp;
     }
-    cout << "achtemp[0] = (" << achtemp[0].real() << "," << achtemp[0].imag() << ")" << endl;
-//        achtemp[0].print();
+        achtemp[0].print();
 
     cout << "********** Kernel Time Taken **********= " << elapsedKernelTimer << " secs" << endl;
     cout << "********** Total Time Taken **********= " << elapsedTimer << " secs" << endl;

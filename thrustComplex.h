@@ -10,7 +10,7 @@
 #include <ctime>
 #include <stdio.h>
 #include <sys/time.h>
-#include <thrust/complex.h>
+#include "/ccs/home/rgayatri/CUDA/include/thrust/complex.h"
 
 using namespace std;
 

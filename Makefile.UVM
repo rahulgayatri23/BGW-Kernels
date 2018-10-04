@@ -2,13 +2,15 @@ EXE = gppUVM.ex
 SRC = gppUVM.cpp 
 
 #CXX = g++
-#CXX = xlc++_r
-CXX = icc
+CXX = xlc++_r
+#CXX = icc
 
 LINK = ${CXX}
 
 ifeq ($(CXX),xlc++_r)
-	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp=noauto:omp -qoffload #-Xptxas -v
+	CXXFLAGS=-O3 -std=gnu++11 -qsmp=noauto:omp -qoffload #-Xptxas -v
+    CXXFLAGS+=-I ~/CUDA/include
+    #CXXFLAGS+=-arch=sm_70
 	LINKFLAGS=-qsmp=noauto:omp -qoffload 
 endif 
 
