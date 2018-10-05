@@ -557,7 +557,7 @@ void gppKernelGPU( GPUComplex *wtilde_array, GPUComplex *aqsntemp, GPUComplex* a
 {
 #if NumBandsKernel
     int numBlocks = number_bands;
-    int numThreadsPerBlock = 32;
+    int numThreadsPerBlock = 64;
     printf("Launching a single dimension grid with numBlocks = %d and %d threadsPerBlock \n", numBlocks, numThreadsPerBlock);
 
     NumberBands_kernel <<< number_bands, numThreadsPerBlock >>> ( wtilde_array, aqsntemp, aqsmtemp, I_eps_array, ncouls, ngpown, number_bands, wx_array, achtemp_re, achtemp_im, vcoul, indinv, inv_igp_index, numThreadsPerBlock, stride);
