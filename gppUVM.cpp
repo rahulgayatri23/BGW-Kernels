@@ -3,7 +3,7 @@
 
 #define nstart 0
 #define nend 3
-#define __OMPOFFLOAD__ 0
+#define __OMPOFFLOAD__ 1
 #define __reductionVersion__ 1
 
 inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, CustomComplex<double>  *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, CustomComplex<double> achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
