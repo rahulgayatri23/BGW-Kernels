@@ -5,7 +5,7 @@ using namespace std;
 #define nstart 0
 #define nend 3
 
-#define __reductionVersion__ 0
+#define __reductionVersion__ 1
 
 double elapsedTime(timeval start_time, timeval end_time)
 {
