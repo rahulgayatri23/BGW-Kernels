@@ -212,7 +212,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     reduction(+:achtemp_re0, achtemp_re1, achtemp_re2, achtemp_im0, achtemp_im1, achtemp_im2)//\
     num_gangs(number_bands) vector_length(32) 
 #else
-#pragma acc parallel loop gang vector present(inv_igp_index, indinv, wtilde_array, wx_array, aqsmtemp, \
+#pragma acc parallel loop gang present(inv_igp_index, indinv, wtilde_array, wx_array, aqsmtemp, \
      aqsntemp, I_eps_array, vcoul)
 #endif
     for(int n1 = 0; n1<number_bands; ++n1)
