@@ -156,7 +156,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
     map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend])//\
-    num_teams(number_bands) //thread_limit(32)
+    num_teams(number_bands) thread_limit(128)
 #endif
 #else
     gettimeofday(&startKernelTimer, NULL);
@@ -166,7 +166,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 
     for(int n1 = 0; n1<number_bands; ++n1) 
     {
-//#if !__reductionVersion__
+//#if !__reductionVersion__ && __OMPOFFLOAD__
 //#pragma omp parallel for
 //#endif
         for(int my_igp=0; my_igp<ngpown; ++my_igp)
