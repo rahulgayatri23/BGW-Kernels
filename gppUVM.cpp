@@ -3,7 +3,7 @@
 
 #define nstart 0
 #define nend 3
-#define __OMPOFFLOAD__ 0
+#define __OMPOFFLOAD__ 1
 #define __reductionVersion__ 1
 
 inline void reduce_achstemp(int n1, int number_bands, int* inv_igp_index, int ncouls, CustomComplex<double>  *aqsmtemp, CustomComplex<double> *aqsntemp, CustomComplex<double> *I_eps_array, CustomComplex<double> achstemp,  int* indinv, int ngpown, double* vcoul, int numThreads)
@@ -160,7 +160,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
 #endif
 #else
     gettimeofday(&startKernelTimer, NULL);
-#pragma omp parallel for\
+#pragma omp parallel for collapse(2) \
     reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
 #endif
 
