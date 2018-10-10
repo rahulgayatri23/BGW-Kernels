@@ -215,6 +215,12 @@ class CustomComplex {
 
     template<class T>
      friend inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
+
+    template<class T>
+     friend inline void CustomComplex_plusEquals(CustomComplex<T>* a, const CustomComplex<T>* b) ;
+
+    template<class T>
+     friend inline void CustomComplex_minusEquals(CustomComplex<T>* a, const CustomComplex<T>* b) ;
 };
 
 
@@ -312,6 +318,18 @@ inline CustomComplex<T> CustomComplex_minus(T* a, const CustomComplex<T>* src) {
 template<class T>
 inline void CustomComplex_equals(const CustomComplex<T>* src, CustomComplex<T>* dest) {
     *dest = CustomComplex<T>(src->x, src->y);
+}
+
+template<class T>
+inline void CustomComplex_plusEquals(CustomComplex<T>* a, const CustomComplex<T>* b){ 
+        a->x += b->x ;
+        a->y += b->y ;
+}
+
+template<class T>
+inline void CustomComplex_minusEquals(CustomComplex<T>* a, const CustomComplex<T>* b){ 
+        a->x -= b->x ;
+        a->y -= b->y ;
 }
 
 
