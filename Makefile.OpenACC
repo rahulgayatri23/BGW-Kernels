@@ -1,26 +1,30 @@
-EXE = gpp_openACC.ex
-SRC = gpp_openACC.cpp
+EXE = ffOpenACC.ex
+#SRC = testOpenACC.cpp
+#SRC = ff_mkcolg.cpp
+SRC = ffOpenACC.cpp
 
-
-#CXX = xlc++
-#CXX = CC 
-#CXX = g++
-#CXX = clang++
+#CXX = xlc++_r
 CXX = pgc++
 
 LINK = ${CXX}
 
 ifeq ($(CXX),pgc++)
-	CXXFLAGS=-fast -std=c++11 --gnu_extensions -g -Munroll
-	#CXXFLAGS+=-acc -ta=multicore
-	#CXXFLAGS+=-acc -ta=tesla:cc60
+	CXXFLAGS=-O3 -std=c++11 --gnu_extensions #-Munroll -mcmodel=medium #-Msafeptr
 	CXXFLAGS+=-acc -ta=tesla:cc70
-	#CXXFLAGS+=-Minfo=accel
-	#CXXFLAGS+=-ta=tesla:keepgpu -ta=tesla:keepptx
+	CXXFLAGS+=-ta=tesla:managed#,ptxinfo
+	CXXFLAGS+=-Minfo=accel
+	CXXFLAGS+=-Mlarge_arrays
 	LINKFLAGS=-acc
 	LINKFLAGS+=-ta=tesla:cc70
 	#LINKFLAGS+=-ta=tesla:cc60
+	LINKFLAGS+=-ta=tesla:managed
 endif
+
+ifeq ($(CXX),xlc++_r)
+	CXXFLAGS=-O3 -std=gnu++11 -g -qsmp
+	LINKFLAGS=-qsmp
+endif
+
 
 OBJ = $(SRC:.cpp=.o)
 
