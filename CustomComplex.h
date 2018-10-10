@@ -15,12 +15,12 @@ using namespace std;
 template<class type>
 
 class CustomComplex {
-
+#pragma omp declare target 
     private : 
-
-    public:
     type x;
     type y;
+
+    public:
 
     explicit CustomComplex () {
         x = 0.00;
@@ -221,6 +221,7 @@ class CustomComplex {
 
     template<class T>
      friend inline void CustomComplex_minusEquals(CustomComplex<T>* a, const CustomComplex<T>* b) ;
+#pragma omp end declare target 
 };
 
 
