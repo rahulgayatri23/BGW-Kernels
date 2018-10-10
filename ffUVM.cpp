@@ -7,7 +7,7 @@ double elapsedTime(timeval start_time, timeval end_time)
 
 static inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
 
-static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2, double &schDttt_cor_re, double &schDttt_cor_im);
 
 void calculate_schDt_lin3(CustomComplex<double>& schDt_lin3, CustomComplex<double>* sch2Di, bool flag_occ, int freqevalmin, double *ekq, int iw, int freqevalstep, double cedifft_zb_right, double cedifft_zb_left, CustomComplex<double> schDt_left, CustomComplex<double> schDt_lin2, int n1, double pref_zb, CustomComplex<double> pref_zb_compl, CustomComplex<double> schDt_avg)
 {
@@ -106,7 +106,7 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
         {
             int indigp = inv_igp_index[my_igp];
             int igp = indinv[indigp];
-            int igblk = 512;
+            int igblk = 1024;
 
             CustomComplex<double> schsDtemp(0.00, 0.00);
             for(int igbeg = 0; igbeg < ncouls; igbeg+=igblk)
@@ -243,12 +243,14 @@ static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqev
     timeval startTime, endTime;
     gettimeofday(&startTime, NULL);
 
+    double schDttt_cor_re = 0.00, schDttt_cor_im = 0.00, \
+        schDttt_re = 0.00, schDttt_im = 0.00;
+#pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im)
     for(int n1 = 0; n1 < number_bands; ++n1)
     {
-        flag_occ = n1 < nvband;
-
         for(int iw = 0; iw < nfreqeval; ++iw)
         {
+            flag_occ = n1 < nvband;
             CustomComplex<double> sch2Di(0.00, 0.00);
             CustomComplex<double> schDi_cor(0.00, 0.00);
             CustomComplex<double> schDi_corb(0.00, 0.00);
@@ -265,7 +267,7 @@ static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqev
                 schDttt_corKernel1(schDi_cor, inv_igp_index, indinv, I_epsR_array, I_epsA_array, aqsmtemp, aqsntemp, vcoul,  ncouls, ifreq, ngpown, n1, fact1, fact2);
             }
             else if(flag_occ)
-                schDttt_corKernel2(schDi_cor, inv_igp_index, indinv, I_epsR_array, I_epsA_array, aqsmtemp, aqsntemp, vcoul,  ncouls, ifreq, ngpown, n1, fact1, fact2);
+                schDttt_corKernel2(schDi_cor, inv_igp_index, indinv, I_epsR_array, I_epsA_array, aqsmtemp, aqsntemp, vcoul,  ncouls, ifreq, ngpown, n1, fact1, fact2, schDttt_cor_re, schDttt_cor_im);
 
 
 //Summing up at the end of iw loop
@@ -281,7 +283,7 @@ static inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *i
     int blkSize = 512;
     double schDttt_cor_re = 0.00, schDttt_cor_im = 0.00, \
         schDttt_re = 0.00, schDttt_im = 0.00;
-#pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im, schDttt_re, schDttt_im)
+//#pragma omp parallel for default(shared) collapse(2) reduction(+:schdttt_cor_re, schdttt_cor_im, schdttt_re, schdttt_im)
     for(int igbeg = 0; igbeg < ncouls; igbeg += blkSize)
     {
         for(int my_igp = 0; my_igp < ngpown; ++my_igp)
@@ -306,11 +308,11 @@ static inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *i
 
 }
 
-static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2)
+static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2, double &schDttt_cor_re, double &schDttt_cor_im)
 {
-    int blkSize = 512;
+    int blkSize = 1024;
     double schDttt_cor_re = 0.00, schDttt_cor_im = 0.00;
-#pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im)
+//#pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im)
     for(int igbeg = 0; igbeg < ncouls; igbeg += blkSize)
     {
         for(int my_igp = 0; my_igp < ngpown; ++my_igp)
@@ -518,7 +520,7 @@ int main(int argc, char** argv)
     achDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, pref_zb, pref, dFreqGrid, dFreqBrd, schDt_matrix, schDi, schDi_cor, sch2Di, asxDtemp);
 
     /***********achDtemp_cor Kernel ****************/
-//    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, achDtemp_cor, elapsed_achDtemp_cor);
+    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, achDtemp_cor, elapsed_achDtemp_cor);
 
     gettimeofday(&endTimer_Kernel, NULL);
     double elapsedTimer_Kernel = elapsedTime(startTimer_Kernel, endTimer_Kernel);
