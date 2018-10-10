@@ -7,7 +7,7 @@ double elapsedTime(timeval start_time, timeval end_time)
 
 static inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
 
-static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2, double &schDttt_cor_re, double &schDttt_cor_im);
+static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
 
 void calculate_schDt_lin3(CustomComplex<double>& schDt_lin3, CustomComplex<double>* sch2Di, bool flag_occ, int freqevalmin, double *ekq, int iw, int freqevalstep, double cedifft_zb_right, double cedifft_zb_left, CustomComplex<double> schDt_left, CustomComplex<double> schDt_lin2, int n1, double pref_zb, CustomComplex<double> pref_zb_compl, CustomComplex<double> schDt_avg)
 {
@@ -239,18 +239,17 @@ void achDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, in
 
 static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *achDtemp_cor, double &elapsedTimeKernel)
 {
-    bool flag_occ;
     timeval startTime, endTime;
     gettimeofday(&startTime, NULL);
 
     double schDttt_cor_re = 0.00, schDttt_cor_im = 0.00, \
         schDttt_re = 0.00, schDttt_im = 0.00;
-#pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im)
+//#pragma omp parallel for default(shared) reduction(+:schDttt_cor_re, schDttt_cor_im, schDttt_re, schDttt_im)
     for(int n1 = 0; n1 < number_bands; ++n1)
     {
         for(int iw = 0; iw < nfreqeval; ++iw)
         {
-            flag_occ = n1 < nvband;
+            bool flag_occ = n1 < nvband;
             CustomComplex<double> sch2Di(0.00, 0.00);
             CustomComplex<double> schDi_cor(0.00, 0.00);
             CustomComplex<double> schDi_corb(0.00, 0.00);
@@ -267,7 +266,7 @@ static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqev
                 schDttt_corKernel1(schDi_cor, inv_igp_index, indinv, I_epsR_array, I_epsA_array, aqsmtemp, aqsntemp, vcoul,  ncouls, ifreq, ngpown, n1, fact1, fact2);
             }
             else if(flag_occ)
-                schDttt_corKernel2(schDi_cor, inv_igp_index, indinv, I_epsR_array, I_epsA_array, aqsmtemp, aqsntemp, vcoul,  ncouls, ifreq, ngpown, n1, fact1, fact2, schDttt_cor_re, schDttt_cor_im);
+                schDttt_corKernel2(schDi_cor, inv_igp_index, indinv, I_epsR_array, I_epsA_array, aqsmtemp, aqsntemp, vcoul,  ncouls, ifreq, ngpown, n1, fact1, fact2);
 
 
 //Summing up at the end of iw loop
@@ -281,9 +280,9 @@ static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqev
 static inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2)
 {
     int blkSize = 512;
-    double schDttt_cor_re = 0.00, schDttt_cor_im = 0.00, \
-        schDttt_re = 0.00, schDttt_im = 0.00;
-//#pragma omp parallel for default(shared) collapse(2) reduction(+:schdttt_cor_re, schdttt_cor_im, schdttt_re, schdttt_im)
+    double schDttt_cor_re = 0.00, schDttt_cor_im = 0.00;
+    double schDttt_re = 0.00, schDttt_im = 0.00;
+#pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im, schDttt_re, schDttt_im)
     for(int igbeg = 0; igbeg < ncouls; igbeg += blkSize)
     {
         for(int my_igp = 0; my_igp < ngpown; ++my_igp)
@@ -299,7 +298,9 @@ static inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *i
 
                 schDttt_re += CustomComplex_real(sch2Dtt) ;
                 schDttt_im += CustomComplex_imag(sch2Dtt) ;
+//#pragma omp atomic
                 schDttt_cor_re += CustomComplex_real(sch2Dtt) ;
+//#pragma omp atomic
                 schDttt_cor_im += CustomComplex_imag(sch2Dtt) ;
             }
         }
@@ -308,11 +309,11 @@ static inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *i
 
 }
 
-static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2, double &schDttt_cor_re, double &schDttt_cor_im)
+static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2)
 {
     int blkSize = 1024;
     double schDttt_cor_re = 0.00, schDttt_cor_im = 0.00;
-//#pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im)
+#pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im)
     for(int igbeg = 0; igbeg < ncouls; igbeg += blkSize)
     {
         for(int my_igp = 0; my_igp < ngpown; ++my_igp)
@@ -324,7 +325,9 @@ static inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *i
                 CustomComplex<double> sch2Dt = ((I_epsR_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[ifreq*ncouls*ngpown + my_igp*ncouls + ig]) * fact1 + \
                                             (I_epsR_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig]) * fact2) * -0.5;
                 CustomComplex<double> sch2Dtt = aqsntemp[n1*ncouls + ig] * CustomComplex_conj(aqsmtemp[n1*ncouls + igp]) * sch2Dt * vcoul[igp];
+#pragma omp atomic
                 schDttt_cor_re += CustomComplex_real(sch2Dtt) ;
+#pragma omp atomic
                 schDttt_cor_im += CustomComplex_imag(sch2Dtt) ;
             }
         }
