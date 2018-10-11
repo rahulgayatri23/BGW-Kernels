@@ -152,15 +152,8 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *
 
 }
 //
-inline void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double occ, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *asxDtemp, double &elapsedTimeKernel)
+inline void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double occ, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *asxDtemp_re, double *asxDtemp_im, double &elapsedTimeKernel)
 {
-    double *asxDtemp_re = new double[nfreqeval];
-    double *asxDtemp_im = new double[nfreqeval];
-    for(int iw = 0; iw < nfreqeval; ++iw)
-    {
-        asxDtemp_re[iw] = 0.00;
-        asxDtemp_im[iw] = 0.00;
-    }
 
     timeval startTime, endTime;
     gettimeofday(&startTime, NULL);
@@ -201,14 +194,10 @@ inline void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int nco
             } // iw
         }
     }
+#pragma omp target update from(asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
     gettimeofday(&endTime, NULL);
     elapsedTimeKernel = elapsedTime(startTime, endTime);
 
-    for(int iw = 0; iw < nfreqeval; ++iw)
-        asxDtemp[iw] = CustomComplex<double>(asxDtemp_re[iw], asxDtemp_im[iw]);
-
-    free(asxDtemp_re);
-    free(asxDtemp_im);
 }
 
 
@@ -269,20 +258,13 @@ void achDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, in
 
 }
 
-static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *achDtemp_cor, double &elapsedTimeKernel)
+static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *achDtemp_cor_re, double *achDtemp_cor_im, double &elapsedTimeKernel)
 {
     timeval startTime, endTime;
     gettimeofday(&startTime, NULL);
 
     double schDttt_cor_re = 0.00, schDttt_cor_im = 0.00, \
         schDttt_re = 0.00, schDttt_im = 0.00;
-    double *achDtemp_cor_re = new double[nfreqeval];
-    double *achDtemp_cor_im = new double[nfreqeval];
-    for(int iw = 0; iw < nfreqeval; ++iw)
-    {
-        achDtemp_cor_re[iw] = 0.00;
-        achDtemp_cor_im[iw] = 0.00;
-    }
 
 #if __OMPOFFLOAD__
 #pragma omp target teams distribute parallel for collapse(2) \
@@ -324,8 +306,6 @@ static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqev
     gettimeofday(&endTime, NULL);
     elapsedTimeKernel = elapsedTime(startTime, endTime);
 
-    for(int iw = 0; iw < nfreqeval; ++iw)
-        achDtemp_cor[iw] = CustomComplex<double>(achDtemp_cor_re[iw], achDtemp_cor_im[iw]);
 }
 
 inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2)
@@ -528,8 +508,17 @@ int main(int argc, char** argv)
     CustomComplex<double> *schDi_cor = new CustomComplex<double>[nfreqeval];
     CustomComplex<double> *schDi_corb = new CustomComplex<double>[nfreqeval];
     CustomComplex<double> *achDtemp = new CustomComplex<double>[nfreqeval];
+
+    //achDtemp_cor
     CustomComplex<double> *achDtemp_cor = new CustomComplex<double>[nfreqeval];
+    double *achDtemp_cor_re = new double[nfreqeval];
+    double *achDtemp_cor_im = new double[nfreqeval];
+
+    //asxDtemp
     CustomComplex<double> *asxDtemp = new CustomComplex<double>[nfreqeval];
+    double *asxDtemp_re = new double[nfreqeval];
+    double *asxDtemp_im = new double[nfreqeval];
+
     CustomComplex<double> *dFreqBrd = new CustomComplex<double>[nFreq];
     mem_alloc += (nfreqeval * 9 * sizeof(CustomComplex<double>));
     mem_alloc += (nFreq * sizeof(CustomComplex<double>)) ;
@@ -605,6 +594,10 @@ int main(int argc, char** argv)
         asxDtemp[i] = expr0;
         achDtemp[i] = expr0;
         achDtemp_cor[i] = expr0;
+        asxDtemp_re[i] = 0.00;
+        asxDtemp_im[i] = 0.00;
+        achDtemp_cor_re[i] = 0.00;
+        achDtemp_cor_im[i] = 0.00;
     }
 
     gettimeofday(&end_preKernel, NULL);
@@ -614,8 +607,8 @@ int main(int argc, char** argv)
     cout << "Memory Used = " << mem_alloc/(1024 * 1024 * 1024) << " GB" << endl;
 
 #if __OMPOFFLOAD__
-#pragma omp target enter data map(alloc: inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls])
-#pragma omp target update to(inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls])
+#pragma omp target enter data map(alloc: inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls], asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
+#pragma omp target update to(inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls], asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
 
     long double device_mem_alloc = 0.00;
     device_mem_alloc += 2*(number_bands * ncouls * sizeof(CustomComplex<double>));
@@ -634,13 +627,20 @@ int main(int argc, char** argv)
     achsDtemp_Kernel(number_bands, ngpown, ncouls, nFreq, inv_igp_index, indinv, aqsntemp, aqsmtemp, I_epsR_array, vcoul, achsDtemp, elapsed_achsDtemp);
 
     /***********asxDtemp Kernel ****************/
-    asxDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, occ, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, asxDtemp, elapsed_asxDtemp);
+    asxDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, occ, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, asxDtemp_re, asxDtemp_im, elapsed_asxDtemp);
 
     /***********achDtemp Kernel ****************/
     achDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, pref_zb, pref, dFreqGrid, dFreqBrd, schDt_matrix, schDi, schDi_cor, sch2Di, asxDtemp);
 
     /***********achDtemp_cor Kernel ****************/
-    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, achDtemp_cor, elapsed_achDtemp_cor);
+    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, achDtemp_cor_re, achDtemp_cor_im, elapsed_achDtemp_cor);
+
+    //Aggregating results from real and imaginary arrays to complex-numbers
+    for(int iw = 0; iw < nfreqeval; ++iw)
+    {
+        asxDtemp[iw] = CustomComplex<double>(asxDtemp_re[iw], asxDtemp_im[iw]);
+        achDtemp_cor[iw] = CustomComplex<double>(achDtemp_cor_re[iw], achDtemp_cor_im[iw]);
+    }
 
     gettimeofday(&endTimer_Kernel, NULL);
     double elapsedTimer_Kernel = elapsedTime(startTimer_Kernel, endTimer_Kernel);
