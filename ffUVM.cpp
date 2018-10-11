@@ -1,4 +1,5 @@
 #include "./CustomComplex.h"
+#include "./cudaAlloc.h"
 #define __OMPOFFLOAD__ 1
 
 inline double elapsedTime(timeval start_time, timeval end_time)
@@ -103,7 +104,7 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *
 #if __OMPOFFLOAD__
 
 #pragma omp target teams distribute collapse(2) \
-    map(to:inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls])\
+    is_device_ptr(aqsmtemp, aqsntemp, I_epsR_array, inv_igp_index, indinv, vcoul) \
     reduction(+:achsDtemp_re, achsDtemp_im)
 //#pragma omp parallel for default(shared) collapse(2) reduction(+:achsDtemp_re, achsDtemp_im)
 #else
@@ -152,16 +153,15 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *
 
 }
 //
-inline void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double occ, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *asxDtemp_re, double *asxDtemp_im, double &elapsedTimeKernel)
+void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double occ, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *asxDtemp_re, double *asxDtemp_im, double &elapsedTimeKernel)
 {
 
     timeval startTime, endTime;
     gettimeofday(&startTime, NULL);
 #if __OMPOFFLOAD__
 #pragma omp target teams distribute parallel for collapse(3) \
-    map(to:inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls], \
-    ekq[0:number_bands], dFreqGrid[0:nFreq])\
-    map(tofrom : asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
+    map(to:dFreqGrid[0:nFreq])\
+    is_device_ptr(aqsntemp, aqsmtemp, I_epsR_array, I_epsA_array, inv_igp_index, indinv, vcoul, asxDtemp_re, asxDtemp_im, ekq)
 #else
 #pragma omp parallel for collapse(3) default(shared)
 #endif 
@@ -194,7 +194,6 @@ inline void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int nco
             } // iw
         }
     }
-#pragma omp target update from(asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
     gettimeofday(&endTime, NULL);
     elapsedTimeKernel = elapsedTime(startTime, endTime);
 
@@ -258,7 +257,7 @@ void achDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, in
 
 }
 
-static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *achDtemp_cor_re, double *achDtemp_cor_im, double &elapsedTimeKernel)
+void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *achDtemp_cor_re, double *achDtemp_cor_im, double &elapsedTimeKernel)
 {
     timeval startTime, endTime;
     gettimeofday(&startTime, NULL);
@@ -268,9 +267,9 @@ static inline void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqev
 
 #if __OMPOFFLOAD__
 #pragma omp target teams distribute parallel for collapse(2) \
-    map(to:inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls], \
-    ekq[0:number_bands], dFreqGrid[0:nFreq])\
-    map(tofrom:achDtemp_cor_re[0:nfreqeval], achDtemp_cor_im[0:nfreqeval])
+    map(to:dFreqGrid[0:nFreq])\
+    is_device_ptr(aqsntemp, aqsmtemp, I_epsR_array, I_epsA_array, inv_igp_index, indinv, vcoul, \
+        achDtemp_cor_re, achDtemp_cor_im, ekq)
 #endif 
     for(int n1 = 0; n1 < number_bands; ++n1)
     {
@@ -607,8 +606,8 @@ int main(int argc, char** argv)
     cout << "Memory Used = " << mem_alloc/(1024 * 1024 * 1024) << " GB" << endl;
 
 #if __OMPOFFLOAD__
-#pragma omp target enter data map(alloc: inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls], asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
-#pragma omp target update to(inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls], asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
+#pragma omp target enter data map(alloc: asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
+#pragma omp target update to(asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
 
     long double device_mem_alloc = 0.00;
     device_mem_alloc += 2*(number_bands * ncouls * sizeof(CustomComplex<double>));
@@ -616,7 +615,58 @@ int main(int argc, char** argv)
     device_mem_alloc += ngpown * sizeof(int);
     device_mem_alloc += ncouls * sizeof(int);
     device_mem_alloc += ncouls * sizeof(double);
-    std::cout << "Memory Allocated on Device = " << device_mem_alloc/(1024 * 1024 * 1024) << " GBs" << std::endl;
+
+    CustomComplex<double> *d_aqsmtemp, *d_aqsntemp, \
+        *d_I_epsR_array, *d_I_epsA_array;
+
+    int *d_inv_igp_index, *d_indinv;
+    double *d_vcoul, *d_ekq, \
+        *d_asxDtemp_re, *d_asxDtemp_im, \
+        *d_achDtemp_cor_re, *d_achDtemp_cor_im;
+
+    //aqsmtemp
+    CudaSafeCall(cudaMallocManaged((void**) &d_aqsmtemp, number_bands*ncouls*sizeof(CustomComplex<double>)));
+    CudaSafeCall(cudaMemcpy(d_aqsmtemp, aqsmtemp, number_bands*ncouls*sizeof(CustomComplex<double>), cudaMemcpyHostToDevice));
+
+    //aqsntemp
+    CudaSafeCall(cudaMallocManaged((void**) &d_aqsntemp, number_bands*ncouls*sizeof(CustomComplex<double>)));
+    CudaSafeCall(cudaMemcpy(d_aqsntemp, aqsntemp, number_bands*ncouls*sizeof(CustomComplex<double>), cudaMemcpyHostToDevice));
+
+    //I_epsR_array
+    CudaSafeCall(cudaMallocManaged((void**) &d_I_epsR_array, nFreq*ngpown*ncouls*sizeof(CustomComplex<double>)));
+    CudaSafeCall(cudaMemcpy(d_I_epsR_array, I_epsR_array, nFreq*ngpown*ncouls*sizeof(CustomComplex<double>), cudaMemcpyHostToDevice));
+
+    //I_epsA_array
+    CudaSafeCall(cudaMallocManaged((void**) &d_I_epsA_array, nFreq*ngpown*ncouls*sizeof(CustomComplex<double>)));
+    CudaSafeCall(cudaMemcpy(d_I_epsA_array, I_epsA_array, nFreq*ngpown*ncouls*sizeof(CustomComplex<double>), cudaMemcpyHostToDevice));
+
+    //inv_igp_index
+    CudaSafeCall(cudaMallocManaged((void**) &d_inv_igp_index, ngpown*sizeof(int)));
+    CudaSafeCall(cudaMemcpy(d_inv_igp_index, inv_igp_index, ngpown*sizeof(int), cudaMemcpyHostToDevice));
+
+    //indinv
+    CudaSafeCall(cudaMallocManaged((void**) &d_indinv, ncouls*sizeof(int)));
+    CudaSafeCall(cudaMemcpy(d_indinv, indinv, ncouls*sizeof(int), cudaMemcpyHostToDevice));
+
+    //ekq
+    CudaSafeCall(cudaMallocManaged((void**) &d_ekq, number_bands*sizeof(double)));
+    CudaSafeCall(cudaMemcpy(d_ekq, ekq, number_bands*sizeof(double), cudaMemcpyHostToDevice));
+
+    //vcoul
+    CudaSafeCall(cudaMallocManaged((void**) &d_vcoul, ncouls*sizeof(double)));
+    CudaSafeCall(cudaMemcpy(d_vcoul, vcoul, ncouls*sizeof(double), cudaMemcpyHostToDevice));
+
+    //asxDtemp_re && asxDtemp_im
+    CudaSafeCall(cudaMallocManaged((void**) &d_asxDtemp_re, nfreqeval*sizeof(double)));
+    CudaSafeCall(cudaMallocManaged((void**) &d_asxDtemp_im, nfreqeval*sizeof(double)));
+    CudaSafeCall(cudaMemcpy(d_asxDtemp_im, asxDtemp_im, nfreqeval*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_asxDtemp_re, asxDtemp_re, nfreqeval*sizeof(double), cudaMemcpyHostToDevice));
+
+    //achDtemp_cor_re && achDtemp_cor_im
+    CudaSafeCall(cudaMallocManaged((void**) &d_achDtemp_cor_re, nfreqeval*sizeof(double)));
+    CudaSafeCall(cudaMallocManaged((void**) &d_achDtemp_cor_im, nfreqeval*sizeof(double)));
+    CudaSafeCall(cudaMemcpy(d_achDtemp_cor_re, achDtemp_cor_re, nfreqeval*sizeof(double), cudaMemcpyHostToDevice));
+    CudaSafeCall(cudaMemcpy(d_achDtemp_cor_im, achDtemp_cor_im, nfreqeval*sizeof(double), cudaMemcpyHostToDevice));
 
 #endif 
 
@@ -624,17 +674,35 @@ int main(int argc, char** argv)
     cout << "starting Kernels" << endl;
 
     /***********achsDtemp Kernel ****************/
+#if __OMPOFFLOAD__
+    achsDtemp_Kernel(number_bands, ngpown, ncouls, nFreq, d_inv_igp_index, d_indinv, d_aqsntemp, d_aqsmtemp, d_I_epsR_array, d_vcoul, achsDtemp, elapsed_achsDtemp);
+#else
     achsDtemp_Kernel(number_bands, ngpown, ncouls, nFreq, inv_igp_index, indinv, aqsntemp, aqsmtemp, I_epsR_array, vcoul, achsDtemp, elapsed_achsDtemp);
+#endif
 
     /***********asxDtemp Kernel ****************/
+#if __OMPOFFLOAD__
+    asxDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, occ, d_ekq, dFreqGrid, d_inv_igp_index, d_indinv, d_aqsmtemp, d_aqsntemp, d_vcoul, d_I_epsR_array, d_I_epsA_array, d_asxDtemp_re, d_asxDtemp_im, elapsed_asxDtemp);
+#else
     asxDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, occ, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, asxDtemp_re, asxDtemp_im, elapsed_asxDtemp);
+#endif
 
     /***********achDtemp Kernel ****************/
     achDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, pref_zb, pref, dFreqGrid, dFreqBrd, schDt_matrix, schDi, schDi_cor, sch2Di, asxDtemp);
 
     /***********achDtemp_cor Kernel ****************/
-    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, achDtemp_cor_re, achDtemp_cor_im, elapsed_achDtemp_cor);
+#if __OMPOFFLOAD__
+    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, d_ekq, dFreqGrid, d_inv_igp_index, d_indinv, d_aqsmtemp, d_aqsntemp, d_vcoul, d_I_epsR_array, d_I_epsA_array, d_achDtemp_cor_re, d_achDtemp_cor_im, elapsed_achDtemp_cor);
+#else
+    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, d_I_epsR_array, d_I_epsA_array, achDtemp_cor_re, achDtemp_cor_im, elapsed_achDtemp_cor);
+#endif
 
+#if __OMPOFFLOAD__
+    CudaSafeCall(cudaMemcpy(asxDtemp_im, d_asxDtemp_im, nfreqeval*sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(asxDtemp_re, d_asxDtemp_re, nfreqeval*sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(achDtemp_cor_re, d_achDtemp_cor_re, nfreqeval*sizeof(double), cudaMemcpyDeviceToHost));
+    CudaSafeCall(cudaMemcpy(achDtemp_cor_im, d_achDtemp_cor_im, nfreqeval*sizeof(double), cudaMemcpyDeviceToHost));
+#endif
     //Aggregating results from real and imaginary arrays to complex-numbers
     for(int iw = 0; iw < nfreqeval; ++iw)
     {
@@ -646,7 +714,16 @@ int main(int argc, char** argv)
     double elapsedTimer_Kernel = elapsedTime(startTimer_Kernel, endTimer_Kernel);
 
 #if __OMPOFFLOAD__
-#pragma omp target exit data map(delete: inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls])
+    cudaFree(d_inv_igp_index);
+    cudaFree(d_indinv);
+    cudaFree(d_aqsmtemp);
+    cudaFree(d_aqsntemp);
+    cudaFree(d_vcoul);
+    cudaFree(d_I_epsR_array);
+    cudaFree(d_I_epsA_array);
+    cudaFree(d_asxDtemp_re);
+    cudaFree(d_asxDtemp_im);
+//#pragma omp target exit data map(delete: inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls])
 #endif 
     cout << "achsDtemp = " ;
     achsDtemp.print();
