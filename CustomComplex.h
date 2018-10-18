@@ -211,10 +211,13 @@ class CustomComplex {
      friend inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, T* b) ;
+     friend inline CustomComplex<T> CustomComplex_minus(const T* a, const CustomComplex<T>* src) ;
 
     template<class T>
      friend inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
+
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_plus(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
 
     template<class T>
      friend inline void CustomComplex_plusEquals(CustomComplex<T>* a, const CustomComplex<T>* b) ;
@@ -228,6 +231,7 @@ class CustomComplex {
 /* Return the conjugate of a complex number 
 flop
 */
+#pragma omp declare target 
 template<class T>
 inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) {
     T re_this = src->x;
@@ -311,8 +315,14 @@ inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const Cus
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_minus(T* a, const CustomComplex<T>* src) {
+inline CustomComplex<T> CustomComplex_minus(const T* a, const CustomComplex<T>* src) {
         CustomComplex<T> result(*a - src->x, 0 - src->y);
+        return result;
+}
+
+template<class T>
+inline CustomComplex<T> CustomComplex_plus(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
+        CustomComplex<T> result(a->x + b->x, a->y + b->y);
         return result;
 }
 
@@ -355,6 +365,28 @@ void d_achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncou
 
 //TestUVM functions
 void cudaKernel(int *a, int N, int M);
+
+inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+
+//inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+
+inline void compute_fact(double wx, int nFreq, double *dFreqGrid, double &fact1, double &fact2, int &ifreq, int loop, bool flag_occ);
+
+void calculate_schDt_lin3(CustomComplex<double>& schDt_lin3, CustomComplex<double>* sch2Di, bool flag_occ, int freqevalmin, double *ekq, int iw, int freqevalstep, double cedifft_zb_right, double cedifft_zb_left, CustomComplex<double> schDt_left, CustomComplex<double> schDt_lin2, int n1, double pref_zb, CustomComplex<double> pref_zb_compl, CustomComplex<double> schDt_avg);
+
+inline double elapsedTime(timeval start_time, timeval end_time);
+
+inline void ssxDittt_kernel(int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_eps_array, CustomComplex<double> &ssxDittt, int ngpown, int ncouls, int n1,int ifreq, double fact1, double fact2, int igp, int my_igp);
+
+#pragma omp end declare target 
+
+void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsntemp, CustomComplex<double> *aqsmtemp, CustomComplex<double> *I_epsR_array, double *vcoul, CustomComplex<double> &achsDtemp, double &elapsedTimeKernel);
+
+void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double occ, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *asxDtemp_re, double *asxDtemp_im, double &elapsedTimeKernel);
+
+void achDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double pref_zb, double *pref, double *dFreqGrid, CustomComplex<double> *dFreqBrd, CustomComplex<double> *schDt_matrix, CustomComplex<double> *schDi, CustomComplex<double> *schDi_cor, CustomComplex<double> *sch2Di, CustomComplex<double> *achDtemp);
+
+void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *achDtemp_cor_re, double *achDtemp_cor_im, double &elapsedTimeKernel);
 
 #endif
 

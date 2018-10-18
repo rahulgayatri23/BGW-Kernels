@@ -1,11 +1,12 @@
-#EXE = gppUVM.ex
-#SRC = gppUVM.cpp 
-EXE = ffUVM.ex
-SRC = ffUVM.cpp 
+EXE = gppUVM.ex
+SRC = gppUVM.cpp 
+#EXE = ffUVM.ex
+#SRC = ffUVM.cpp 
 
-#CXX = g++
-CXX = xlc++_r
-#CXX = icc
+#CXX=g++
+CXX=xlc++_r
+#CXX=icc
+#CXX=clang++
 
 LINK = ${CXX}
 
@@ -30,6 +31,11 @@ ifeq ($(CXX),icc)
     CXXFLAGS+=-xMIC-AVX512
     LINKFLAGS=-qopenmp -qopenmp-offload=host#-qopenmp-offload=mic
     #LINKFLAGS+=-dynamic #Dynamic flag gives runtime issues with OMP4.5
+endif 
+
+ifeq ($(CXX),clang++)
+	CXXFLAGS=-O3 -std=gnu++11 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${OLCF_CUDA_ROOT}
+	LINKFLAGS=-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${OLCF_CUDA_ROOT}
 endif 
 
 OBJ = $(SRC:.cpp=.o)

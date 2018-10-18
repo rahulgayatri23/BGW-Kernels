@@ -7,10 +7,10 @@ inline double elapsedTime(timeval start_time, timeval end_time)
     return ((end_time.tv_sec - start_time.tv_sec) +1e-6*(end_time.tv_usec - start_time.tv_usec));
 }
 
-inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
-
-inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
-
+//inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+//
+//inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+//
 void calculate_schDt_lin3(CustomComplex<double>& schDt_lin3, CustomComplex<double>* sch2Di, bool flag_occ, int freqevalmin, double *ekq, int iw, int freqevalstep, double cedifft_zb_right, double cedifft_zb_left, CustomComplex<double> schDt_left, CustomComplex<double> schDt_lin2, int n1, double pref_zb, CustomComplex<double> pref_zb_compl, CustomComplex<double> schDt_avg)
 {
     double intfact = (freqevalmin - ekq[n1] + (iw-1) * freqevalstep - cedifft_zb_right) / (freqevalmin - ekq[n1] + (iw-1) * freqevalstep - cedifft_zb_left);
@@ -31,7 +31,44 @@ void calculate_schDt_lin3(CustomComplex<double>& schDt_lin3, CustomComplex<doubl
 
 }
 
-static inline void compute_fact(double wx, int nFreq, double *dFreqGrid, double &fact1, double &fact2, int &ifreq, int loop, bool flag_occ)
+//Touch Everything before kernels start working
+void touch_everything(int number_bands, int ngpown, int ncouls, int nFreq, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsntemp, CustomComplex<double> *aqsmtemp, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *vcoul, double *dFreqGrid, CustomComplex<double> *dFreqBrd, CustomComplex<double> &touched_everything, double &elapsedTimeKernel)
+{
+    double achsDtemp_re = 0.00, achsDtemp_im = 0.00;
+    timeval startTime, endTime;
+
+    gettimeofday(&startTime, NULL);
+#pragma omp target teams distribute parallel for collapse(3) \
+    map(to: aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], dFreqBrd[0:nFreq], dFreqGrid[0:nFreq], \
+            inv_igp_index[0:ngpown], indinv[0:ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls]) \
+    map(tofrom:touched_everything)
+    for(int n1 = 0; n1 < number_bands; ++n1)
+    {
+        for(int ifreq = 0; ifreq < nFreq; ++ifreq)
+        {
+            for(int my_igp = 0; my_igp < ngpown; ++my_igp)
+            {
+                int indigp = inv_igp_index[my_igp];
+                int igp = indinv[indigp];
+
+                for(int ig = 0; ig < ncouls; ++ig)
+                {
+                    CustomComplex<double> store1 = CustomComplex_product(&I_epsR_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig], &I_epsA_array[ifreq*ngpown*ncouls + my_igp*ngpown + igp]);
+                    CustomComplex<double> store2 = CustomComplex_product(&aqsmtemp[n1*ncouls + ig], &aqsntemp[n1*ncouls + igp]);
+                    double store3_re = dFreqGrid[ifreq]*vcoul[ig];
+                    CustomComplex<double> store3 = CustomComplex_product(&dFreqBrd[ifreq], &store3_re);
+                    CustomComplex<double> store4 = CustomComplex_product(&store1, &store2);
+                    touched_everything += CustomComplex_plus(&store3, &store4);
+                }
+            }
+        }
+    }
+
+    gettimeofday(&endTime, NULL);
+    elapsedTimeKernel = elapsedTime(startTime, endTime);
+
+}
+inline void compute_fact(double wx, int nFreq, double *dFreqGrid, double &fact1, double &fact2, int &ifreq, int loop, bool flag_occ)
 {
     if(loop == 1 && wx > 0.00)
     {
@@ -83,15 +120,25 @@ static inline void compute_fact(double wx, int nFreq, double *dFreqGrid, double 
 
 inline void ssxDittt_kernel(int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_eps_array, CustomComplex<double> &ssxDittt, int ngpown, int ncouls, int n1,int ifreq, double fact1, double fact2, int igp, int my_igp)
 {
-    CustomComplex<double> ssxDitt(0.00, 0.00);
+    double ssxDitt_re = 0.00, ssxDitt_im = 0.00;
+//#pragma omp parallel for reduction(+:ssxDitt_re, ssxDitt_im)
     for(int ig = 0; ig < ncouls; ++ig)
     {
-        CustomComplex<double> ssxDit = I_eps_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] * fact1 + \
-                                     I_eps_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] * fact2;
+        CustomComplex<double> ssxDit_store1 = CustomComplex_product(&I_eps_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] , &fact1);
+        CustomComplex<double> ssxDit_store2 = CustomComplex_product(&I_eps_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] , &fact2);
+        CustomComplex<double> ssxDit = CustomComplex_plus(&ssxDit_store1 , &ssxDit_store2);
 
-        ssxDitt += aqsntemp[n1*ncouls + ig] * CustomComplex_conj(aqsmtemp[n1*ncouls + igp]) * ssxDit * vcoul[igp];
+        CustomComplex<double> ssxDitt_store1 = CustomComplex_conj(&aqsmtemp[n1*ncouls + igp]);
+        CustomComplex<double> ssxDitt_store2 = CustomComplex_product(&ssxDit, &vcoul[igp]);
+        CustomComplex<double> ssxDitt_store3 = CustomComplex_product(&ssxDit, &vcoul[igp]);
+        CustomComplex<double> ssxDitt_store4 = CustomComplex_product(&aqsntemp[n1*ncouls +ig], &ssxDitt_store1);
+        
+        CustomComplex<double> ssxDitt = CustomComplex_product(&ssxDitt_store4, &ssxDitt_store3);
+//        CustomComplex<double> ssxDitt = aqsmtemp[n1*ncouls + ig];
+        ssxDitt_re += CustomComplex_real(&ssxDitt);
+        ssxDitt_im += CustomComplex_imag(&ssxDitt);
     }
-    ssxDittt = ssxDitt;
+    ssxDittt = CustomComplex<double> (ssxDitt_re, ssxDitt_im);
 }
 
 
@@ -103,10 +150,11 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *
     gettimeofday(&startTime, NULL);
 #if __OMPOFFLOAD__
 
-#pragma omp target teams distribute collapse(2) \
+#pragma omp target teams distribute \
     is_device_ptr(aqsmtemp, aqsntemp, I_epsR_array, inv_igp_index, indinv, vcoul) \
-    reduction(+:achsDtemp_re, achsDtemp_im)
-//#pragma omp parallel for default(shared) collapse(2) reduction(+:achsDtemp_re, achsDtemp_im)
+    map(tofrom:achsDtemp_re, achsDtemp_im) \
+    reduction(+:achsDtemp_re, achsDtemp_im) //\
+    num_teams(number_bands * ngpown) thread_limit(128)
 #else
 #pragma omp parallel for default(shared) collapse(2) reduction(+:achsDtemp_re, achsDtemp_im)
 #endif
@@ -116,7 +164,6 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *
         {
             int indigp = inv_igp_index[my_igp];
             int igp = indinv[indigp];
-            int igblk = 1024;
 
 #if __OMPOFFLOAD__
 #pragma omp parallel for \
@@ -134,6 +181,7 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *
                 achsDtemp_im += CustomComplex_imag(&schsDtemp);
             }
 #else
+            int igblk = 1024;
             CustomComplex<double> schsDtemp(0.00, 0.00);
             for(int igbeg = 0; igbeg < ncouls; igbeg+=igblk)
             {
@@ -152,16 +200,18 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *
     achsDtemp = CustomComplex<double> (achsDtemp_re, achsDtemp_im) ;
 
 }
-//
+
 void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double occ, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *asxDtemp_re, double *asxDtemp_im, double &elapsedTimeKernel)
 {
 
     timeval startTime, endTime;
     gettimeofday(&startTime, NULL);
+
 #if __OMPOFFLOAD__
-#pragma omp target teams distribute parallel for collapse(3) \
-    map(to:dFreqGrid[0:nFreq])\
-    is_device_ptr(aqsntemp, aqsmtemp, I_epsR_array, I_epsA_array, inv_igp_index, indinv, vcoul, asxDtemp_re, asxDtemp_im, ekq)
+#pragma omp target teams distribute parallel for collapse(3)\
+    map(to:dFreqGrid)\
+    is_device_ptr(aqsntemp, aqsmtemp, I_epsR_array, I_epsA_array, inv_igp_index, indinv, vcoul, ekq) \
+    map(tofrom:asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
 #else
 #pragma omp parallel for collapse(3) default(shared)
 #endif 
@@ -196,7 +246,6 @@ void asxDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, in
     }
     gettimeofday(&endTime, NULL);
     elapsedTimeKernel = elapsedTime(startTime, endTime);
-
 }
 
 
@@ -204,7 +253,14 @@ void achDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, in
 {
     bool flag_occ;
     CustomComplex<double> expr0(0.00, 0.00);
+#if __OMPOFFLOAD__
+#pragma omp target teams distribute parallel for collapse(2)\
+    map(to:dFreqGrid, schDt_matrix, dFreqBrd, schDi, schDi_cor, sch2Di, pref)\
+    is_device_ptr(ekq)\
+    map(tofrom:achDtemp)
+#else
 #pragma omp parallel for default(shared) collapse(2)
+#endif 
     for(int n1 = 0; n1 < number_bands; ++n1)
     {
         for(int ifreq = 0; ifreq < nFreq; ++ifreq)
@@ -267,9 +323,10 @@ void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls
 
 #if __OMPOFFLOAD__
 #pragma omp target teams distribute parallel for collapse(2) \
-    map(to:dFreqGrid[0:nFreq])\
-    is_device_ptr(aqsntemp, aqsmtemp, I_epsR_array, I_epsA_array, inv_igp_index, indinv, vcoul, \
-        achDtemp_cor_re, achDtemp_cor_im, ekq)
+    map(to:dFreqGrid)\
+    is_device_ptr(aqsntemp, aqsmtemp, I_epsR_array, I_epsA_array, inv_igp_index, indinv, vcoul, ekq) \
+    map(tofrom:achDtemp_cor_re[0:nfreqeval], achDtemp_cor_im[0:nfreqeval]) //\
+    num_teams(number_bands) thread_limit(512)
 #endif 
     for(int n1 = 0; n1 < number_bands; ++n1)
     {
@@ -304,7 +361,6 @@ void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls
     } //n1
     gettimeofday(&endTime, NULL);
     elapsedTimeKernel = elapsedTime(startTime, endTime);
-
 }
 
 inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2)
@@ -315,11 +371,10 @@ inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_
 #if !__OMPOFFLOAD__
 #pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im, schDttt_re, schDttt_im)
 #endif
-    for(int igbeg = 0; igbeg < ncouls; igbeg += blkSize)
     {
         for(int my_igp = 0; my_igp < ngpown; ++my_igp)
         {
-            for(int ig = igbeg; ig < min(ncouls, igbeg+blkSize); ++ig)
+            for(int ig = 0; ig < ncouls; ++ig)
             {
                 int indigp = inv_igp_index[my_igp] ;
                 int igp = indinv[indigp];
@@ -336,8 +391,8 @@ inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_
 #pragma omp atomic
                 schDttt_cor_im += CustomComplex_imag(sch2Dtt) ;
 #else 
-                schDttt_cor_re += CustomComplex_real(sch2Dtt) ;
-                schDttt_cor_im += CustomComplex_imag(sch2Dtt) ;
+                schDttt_cor_re += CustomComplex_real(&sch2Dtt) ;
+                schDttt_cor_im += CustomComplex_imag(&sch2Dtt) ;
 #endif
             }
         }
@@ -353,27 +408,37 @@ inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_
 #if !__OMPOFFLOAD__
 #pragma omp parallel for default(shared) collapse(2) reduction(+:schDttt_cor_re, schDttt_cor_im)
 #endif
-    for(int igbeg = 0; igbeg < ncouls; igbeg += blkSize)
+    for(int my_igp = 0; my_igp < ngpown; ++my_igp)
     {
-        for(int my_igp = 0; my_igp < ngpown; ++my_igp)
+        for(int ig = 0; ig < ncouls; ++ig)
         {
-            for(int ig = igbeg; ig < min(ncouls, igbeg+blkSize); ++ig)
-            {
-                int indigp = inv_igp_index[my_igp] ;
-                int igp = indinv[indigp];
-                CustomComplex<double> sch2Dt = ((I_epsR_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[ifreq*ncouls*ngpown + my_igp*ncouls + ig]) * fact1 + \
-                                            (I_epsR_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig]) * fact2) * -0.5;
-                CustomComplex<double> sch2Dtt = aqsntemp[n1*ncouls + ig] * CustomComplex_conj(aqsmtemp[n1*ncouls + igp]) * sch2Dt * vcoul[igp];
+            int indigp = inv_igp_index[my_igp] ;
+            int igp = indinv[indigp];
+//                CustomComplex<double> sch2Dt = ((I_epsR_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[ifreq*ncouls*ngpown + my_igp*ncouls + ig]) * fact1 + \
+//                                            (I_epsR_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig]) * fact2) * -0.5;
+//                CustomComplex<double> sch2Dtt = aqsntemp[n1*ncouls + ig] * CustomComplex_conj(aqsmtemp[n1*ncouls + igp]) * sch2Dt * vcoul[igp];
+
+        CustomComplex<double> sch2Dt_store1 = CustomComplex_minus(&I_epsR_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] , &I_epsA_array[ifreq*ncouls*ngpown + my_igp*ncouls + ig]);
+        CustomComplex<double> sch2Dt_store2 = CustomComplex_minus(&I_epsR_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] , &I_epsA_array[(ifreq+1)*ncouls*ngpown + my_igp*ncouls + ig]);
+        CustomComplex<double> sch2Dt_store3 = CustomComplex_product(&sch2Dt_store1, &fact1);
+        CustomComplex<double> sch2Dt_store4 = CustomComplex_product(&sch2Dt_store2, &fact2);
+        CustomComplex<double> sch2Dt = CustomComplex_plus(&sch2Dt_store3, &sch2Dt_store4);
+        double pt5 = -0.5;
+        sch2Dt = CustomComplex_product(&sch2Dt, &pt5);
+
+        CustomComplex<double> sch2Dtt_store1 = CustomComplex_conj(&aqsmtemp[n1*ncouls+igp]);
+        CustomComplex<double> sch2Dtt_store2 = CustomComplex_product(&aqsntemp[n1*ncouls+ig], &sch2Dtt_store1);
+        CustomComplex<double> sch2Dtt_store3 = CustomComplex_product(&sch2Dt, &vcoul[igp]);
+        CustomComplex<double> sch2Dtt = CustomComplex_product(&sch2Dtt_store2, &sch2Dtt_store3);
 #if !__OMPOFFLOAD__
 #pragma omp atomic
-                schDttt_cor_re += CustomComplex_real(sch2Dtt) ;
+            schDttt_cor_re += CustomComplex_real(sch2Dtt) ;
 #pragma omp atomic
-                schDttt_cor_im += CustomComplex_imag(sch2Dtt) ;
+            schDttt_cor_im += CustomComplex_imag(sch2Dtt) ;
 #else 
-                schDttt_cor_re += CustomComplex_real(sch2Dtt) ;
-                schDttt_cor_im += CustomComplex_imag(sch2Dtt) ;
+            schDttt_cor_re += CustomComplex_real(&sch2Dtt) ;
+            schDttt_cor_im += CustomComplex_imag(&sch2Dtt) ;
 #endif
-            }
         }
     }
     schDttt_cor = CustomComplex<double> (schDttt_cor_re, schDttt_cor_im);
@@ -505,7 +570,6 @@ int main(int argc, char** argv)
     CustomComplex<double> *schDi = new CustomComplex<double>[nfreqeval];
     CustomComplex<double> *sch2Di = new CustomComplex<double>[nfreqeval];
     CustomComplex<double> *schDi_cor = new CustomComplex<double>[nfreqeval];
-    CustomComplex<double> *schDi_corb = new CustomComplex<double>[nfreqeval];
     CustomComplex<double> *achDtemp = new CustomComplex<double>[nfreqeval];
 
     //achDtemp_cor
@@ -588,7 +652,6 @@ int main(int argc, char** argv)
     {
         schDi[i] = expr0;
         sch2Di[i] = expr0;
-        schDi_corb[i] = expr0;
         schDi_cor[i] = expr0;
         asxDtemp[i] = expr0;
         achDtemp[i] = expr0;
@@ -606,8 +669,10 @@ int main(int argc, char** argv)
     cout << "Memory Used = " << mem_alloc/(1024 * 1024 * 1024) << " GB" << endl;
 
 #if __OMPOFFLOAD__
-#pragma omp target enter data map(alloc: asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
-#pragma omp target update to(asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval])
+//#pragma omp target enter data map(alloc: inv_igp_index[0:ngpown], indinv[0:ncouls], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], vcoul[0:ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], \
+//    asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval], achDtemp_cor_re[0:nfreqeval], achDtemp_cor_im[0:nfreqeval])
+//#pragma omp target update to( inv_igp_index[0:ngpown], indinv[0:ncouls], aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], vcoul[0:ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], \
+//    asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval], achDtemp_cor_re[0:nfreqeval], achDtemp_cor_im[0:nfreqeval])
 
     long double device_mem_alloc = 0.00;
     device_mem_alloc += 2*(number_bands * ncouls * sizeof(CustomComplex<double>));
@@ -673,6 +738,15 @@ int main(int argc, char** argv)
     gettimeofday(&startTimer_Kernel, NULL);
     cout << "starting Kernels" << endl;
 
+    /***********Touching Everything so that the data structures are present on the device before kernels execution starts ****************/
+//#if __OMPOFFLOAD__
+//    double elapsed_touched = 0.00;
+//    CustomComplex<double> touched_everything(0.00, 0.00);
+//    touch_everything(number_bands, ngpown, ncouls, nFreq, inv_igp_index, indinv, aqsntemp, aqsmtemp, I_epsR_array, I_epsA_array, vcoul, dFreqGrid, dFreqBrd, touched_everything, elapsed_touched);
+//    std::cout << "touched everything time = " << elapsed_touched << "secs" ;
+//    touched_everything.print();
+//#endif
+
     /***********achsDtemp Kernel ****************/
 #if __OMPOFFLOAD__
     achsDtemp_Kernel(number_bands, ngpown, ncouls, nFreq, d_inv_igp_index, d_indinv, d_aqsntemp, d_aqsmtemp, d_I_epsR_array, d_vcoul, achsDtemp, elapsed_achsDtemp);
@@ -688,7 +762,11 @@ int main(int argc, char** argv)
 #endif
 
     /***********achDtemp Kernel ****************/
+#if __OMPOFFLOAD__
+    achDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, d_ekq, pref_zb, pref, dFreqGrid, dFreqBrd, schDt_matrix, schDi, schDi_cor, sch2Di, asxDtemp);
+#else
     achDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, pref_zb, pref, dFreqGrid, dFreqBrd, schDt_matrix, schDi, schDi_cor, sch2Di, asxDtemp);
+#endif
 
     /***********achDtemp_cor Kernel ****************/
 #if __OMPOFFLOAD__
@@ -702,6 +780,7 @@ int main(int argc, char** argv)
     CudaSafeCall(cudaMemcpy(asxDtemp_re, d_asxDtemp_re, nfreqeval*sizeof(double), cudaMemcpyDeviceToHost));
     CudaSafeCall(cudaMemcpy(achDtemp_cor_re, d_achDtemp_cor_re, nfreqeval*sizeof(double), cudaMemcpyDeviceToHost));
     CudaSafeCall(cudaMemcpy(achDtemp_cor_im, d_achDtemp_cor_im, nfreqeval*sizeof(double), cudaMemcpyDeviceToHost));
+#pragma omp target update from(asxDtemp_re[0:nfreqeval], asxDtemp_im[0:nfreqeval], achDtemp_cor_re[0:nfreqeval], achDtemp_cor_im[0:nfreqeval])
 #endif
     //Aggregating results from real and imaginary arrays to complex-numbers
     for(int iw = 0; iw < nfreqeval; ++iw)
@@ -723,7 +802,7 @@ int main(int argc, char** argv)
     cudaFree(d_I_epsA_array);
     cudaFree(d_asxDtemp_re);
     cudaFree(d_asxDtemp_im);
-//#pragma omp target exit data map(delete: inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls])
+////#pragma omp target exit data map(delete: inv_igp_index[0:ngpown], indinv[0:ncouls], aqsntemp[0:number_bands*ncouls], aqsmtemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], I_epsA_array[0:nFreq*ngpown*ncouls], vcoul[0:ncouls])
 #endif 
     cout << "achsDtemp = " ;
     achsDtemp.print();
@@ -751,7 +830,6 @@ int main(int argc, char** argv)
     free(schDi);
     free(sch2Di);
     free(schDi_cor);
-    free(schDi_corb);
     free(achDtemp);
     free(achDtemp_cor);
     free(asxDtemp);
