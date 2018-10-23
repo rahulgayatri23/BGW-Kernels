@@ -146,7 +146,7 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     gettimeofday(&startKernelTimer, NULL);
 
 #if __reductionVersion__
-#pragma omp target teams distribute collapse(2) \
+#pragma omp target teams distribute parallel for collapse(2) \
     map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
     aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
     reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)\
@@ -165,19 +165,19 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
 #endif
 
-    for(int n1 = 0; n1<number_bands; ++n1) 
+    for(int my_igp=0; my_igp<ngpown; ++my_igp)
     {
-        for(int my_igp=0; my_igp<ngpown; ++my_igp)
+        for(int n1 = 0; n1<number_bands; ++n1) 
         {
             int indigp = inv_igp_index[my_igp];
             int igp = indinv[indigp];
             double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
-#if __reductionVersion__ && __OMPOFFLOAD__
-#pragma omp parallel for\
-    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
-#endif
+//#if __reductionVersion__ && __OMPOFFLOAD__
+//#pragma omp parallel for\
+//    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
+//#endif
             for(int ig = 0; ig<ncouls; ++ig)
             {
                 for(int iw = nstart; iw < nend; ++iw)
