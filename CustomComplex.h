@@ -211,6 +211,12 @@ class CustomComplex {
      friend inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
 
     template<class T>
+     friend inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* src, T* b) ;
+
+    template<class T>
+     friend inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
+
+    template<class T>
      friend inline CustomComplex<T> CustomComplex_minus(const T* a, const CustomComplex<T>* src) ;
 
     template<class T>
@@ -291,6 +297,27 @@ inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T* b)
    T re_this = src->x * (*b);
    T im_this = src->y * (*b);
    return (CustomComplex<T>(re_this, im_this));
+}
+
+template<class T>
+inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* src, T* b) {
+   T re_this = src->x / (*b);
+   T im_this = src->y / (*b);
+   return (CustomComplex<T>(re_this, im_this));
+}
+
+
+template<class T>
+inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* a, const CustomComplex<T>* b) {
+   CustomComplex<T> b_conj = CustomComplex_conj(b);
+   CustomComplex<T> numerator = CustomComplex_product(a , &b_conj);
+   CustomComplex<T> denominator = CustomComplex_product(b , &b_conj);
+
+   double re_this = numerator.x / denominator.x;
+   double im_this = numerator.y / denominator.x;
+
+   CustomComplex<T> result(re_this, im_this);
+   return result;
 }
 
 template<class T>

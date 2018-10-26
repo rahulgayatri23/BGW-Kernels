@@ -8,10 +8,10 @@ inline double elapsedTime(timeval start_time, timeval end_time)
     return ((end_time.tv_sec - start_time.tv_sec) +1e-6*(end_time.tv_usec - start_time.tv_usec));
 }
 
-//inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
-//
-//inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
-//
+inline void schDttt_corKernel1(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+
+inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_index, int *indinv, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, int ncouls, int ifreq, int ngpown, int n1, double fact1, double fact2);
+
 void calculate_schDt_lin3(CustomComplex<double>& schDt_lin3, CustomComplex<double>* sch2Di, bool flag_occ, int freqevalmin, double *ekq, int iw, int freqevalstep, double cedifft_zb_right, double cedifft_zb_left, CustomComplex<double> schDt_left, CustomComplex<double> schDt_lin2, int n1, double pref_zb, CustomComplex<double> pref_zb_compl, CustomComplex<double> schDt_avg)
 {
     double intfact = (freqevalmin - ekq[n1] + (iw-1) * freqevalstep - cedifft_zb_right) / (freqevalmin - ekq[n1] + (iw-1) * freqevalstep - cedifft_zb_left);
@@ -122,7 +122,7 @@ void achsDtemp_Kernel(int number_bands, int ngpown, int ncouls, int nFreq, int *
 #else
 #pragma omp target teams distribute \
     map(to:aqsmtemp[0:number_bands*ncouls], aqsntemp[0:number_bands*ncouls], I_epsR_array[0:nFreq*ngpown*ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls], vcoul[0:ncouls]) \
-    map(tofrom:achsDtemp_re, achsDtemp_im) \
+    map(tofrom:achsDtemp_re, achsDtemp_im) //\
     reduction(+:achsDtemp_re, achsDtemp_im) 
 #endif
 #else
@@ -332,7 +332,6 @@ void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls
             else if(flag_occ)
                 schDttt_corKernel2(schDi_cor, inv_igp_index, indinv, I_epsR_array, I_epsA_array, aqsmtemp, aqsntemp, vcoul,  ncouls, ifreq, ngpown, n1, fact1, fact2);
 
-
 //Summing up at the end of iw loop
 #pragma omp atomic
             achDtemp_cor_re[iw] += CustomComplex_real(schDi_cor);
@@ -395,10 +394,7 @@ inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_
         {
             int indigp = inv_igp_index[my_igp] ;
             int igp = indinv[indigp];
-//                CustomComplex<double> sch2Dt = ((I_epsR_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[ifreq*ncouls*ngpown + my_igp*ncouls + ig]) * fact1 + \
-//                                            (I_epsR_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig]) * fact2) * -0.5;
-//                CustomComplex<double> sch2Dtt = aqsntemp[n1*ncouls + ig] * CustomComplex_conj(aqsmtemp[n1*ncouls + igp]) * sch2Dt * vcoul[igp];
-
+#if __OMPOFFLOAD__
         CustomComplex<double> sch2Dt_store1 = CustomComplex_minus(&I_epsR_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] , &I_epsA_array[ifreq*ncouls*ngpown + my_igp*ncouls + ig]);
         CustomComplex<double> sch2Dt_store2 = CustomComplex_minus(&I_epsR_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] , &I_epsA_array[(ifreq+1)*ncouls*ngpown + my_igp*ncouls + ig]);
         CustomComplex<double> sch2Dt_store3 = CustomComplex_product(&sch2Dt_store1, &fact1);
@@ -411,14 +407,16 @@ inline void schDttt_corKernel2(CustomComplex<double> &schDttt_cor, int *inv_igp_
         CustomComplex<double> sch2Dtt_store2 = CustomComplex_product(&aqsntemp[n1*ncouls+ig], &sch2Dtt_store1);
         CustomComplex<double> sch2Dtt_store3 = CustomComplex_product(&sch2Dt, &vcoul[igp]);
         CustomComplex<double> sch2Dtt = CustomComplex_product(&sch2Dtt_store2, &sch2Dtt_store3);
-#if !__OMPOFFLOAD__
+        schDttt_cor_re += CustomComplex_real(&sch2Dtt) ;
+        schDttt_cor_im += CustomComplex_imag(&sch2Dtt) ;
+#else
+        CustomComplex<double> sch2Dt = ((I_epsR_array[ifreq*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[ifreq*ncouls*ngpown + my_igp*ncouls + ig]) * fact1 + \
+                                    (I_epsR_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig] - I_epsA_array[(ifreq+1)*ngpown*ncouls + my_igp*ncouls + ig]) * fact2) * -0.5;
+        CustomComplex<double> sch2Dtt = aqsntemp[n1*ncouls + ig] * CustomComplex_conj(aqsmtemp[n1*ncouls + igp]) * sch2Dt * vcoul[igp];
 #pragma omp atomic
             schDttt_cor_re += CustomComplex_real(sch2Dtt) ;
 #pragma omp atomic
             schDttt_cor_im += CustomComplex_imag(sch2Dtt) ;
-#else 
-            schDttt_cor_re += CustomComplex_real(&sch2Dtt) ;
-            schDttt_cor_im += CustomComplex_imag(&sch2Dtt) ;
 #endif
         }
     }
@@ -729,11 +727,11 @@ int main(int argc, char** argv)
 #endif
 
     /***********asxDtemp Kernel ****************/
-#if __USE_DEVICE_PTR
-    asxDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, occ, d_ekq, dFreqGrid, d_inv_igp_index, d_indinv, d_aqsmtemp, d_aqsntemp, d_vcoul, d_I_epsR_array, d_I_epsA_array, d_asxDtemp_re, d_asxDtemp_im, elapsed_asxDtemp);
-#else
-    asxDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, occ, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, asxDtemp_re, asxDtemp_im, elapsed_asxDtemp);
-#endif
+//#if __USE_DEVICE_PTR
+//    asxDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, occ, d_ekq, dFreqGrid, d_inv_igp_index, d_indinv, d_aqsmtemp, d_aqsntemp, d_vcoul, d_I_epsR_array, d_I_epsA_array, d_asxDtemp_re, d_asxDtemp_im, elapsed_asxDtemp);
+//#else
+//    asxDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, occ, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, asxDtemp_re, asxDtemp_im, elapsed_asxDtemp);
+//#endif
 
     /***********achDtemp Kernel ****************/
 //#if __OMPOFFLOAD__
@@ -742,12 +740,12 @@ int main(int argc, char** argv)
 //    achDtemp_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, pref_zb, pref, dFreqGrid, dFreqBrd, schDt_matrix, schDi, schDi_cor, sch2Di, asxDtemp);
 //#endif
 
-    /***********achDtemp_cor Kernel ****************/
-#if __USE_DEVICE_PTR
-    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, d_ekq, dFreqGrid, d_inv_igp_index, d_indinv, d_aqsmtemp, d_aqsntemp, d_vcoul, d_I_epsR_array, d_I_epsA_array, d_achDtemp_cor_re, d_achDtemp_cor_im, elapsed_achDtemp_cor);
-#else
-    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, achDtemp_cor_re, achDtemp_cor_im, elapsed_achDtemp_cor);
-#endif
+//    /***********achDtemp_cor Kernel ****************/
+//#if __USE_DEVICE_PTR
+//    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, d_ekq, dFreqGrid, d_inv_igp_index, d_indinv, d_aqsmtemp, d_aqsntemp, d_vcoul, d_I_epsR_array, d_I_epsA_array, d_achDtemp_cor_re, d_achDtemp_cor_im, elapsed_achDtemp_cor);
+//#else
+//    achDtemp_cor_Kernel(number_bands, nvband, nfreqeval, ncouls, ngpown, nFreq, freqevalmin, freqevalstep, ekq, dFreqGrid, inv_igp_index, indinv, aqsmtemp, aqsntemp, vcoul, I_epsR_array, I_epsA_array, achDtemp_cor_re, achDtemp_cor_im, elapsed_achDtemp_cor);
+//#endif
 
 #if __OMPOFFLOAD__
 #if __USE_DEVICE_PTR
