@@ -1,5 +1,7 @@
-EXE = gppKokkos.ex
-SRC = gppKokkos.cpp 
+EXE = gppUVM.ex
+SRC = gppUVM.cpp 
+#EXE = ffUVM.ex
+#SRC = ffUVM.cpp 
 
 #CXX=g++
 CXX=xlc++_r
