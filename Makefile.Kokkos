@@ -1,49 +1,59 @@
-EXE = gppKokkos.ex
-SRC = gppKokkos.cpp 
+KOKKOS_PATH = ${HOME}/Kokkos/kokkos
+KOKKOS_DEVICES = "OpenMP"
+EXE_NAME = "gppKokkos"
 
+SRC = gppKokkos.cpp
+#CXX=icc
 #CXX=g++
 CXX=xlc++_r
-#CXX=icc
-#CXX=clang++
 
-LINK = ${CXX}
+default: build
+	echo "Start Build"
 
-ifeq ($(CXX),xlc++_r)
-	CXXFLAGS=-O3 -std=gnu++11 -qsmp=noauto:omp -qoffload #-Xptxas -v
-    CXXFLAGS+=-I ~/CUDA/include
-    #CXXFLAGS+=-arch=sm_70
-	LINKFLAGS=-qsmp=noauto:omp -qoffload 
+ifeq ($(CXX),icc)
+	CXXFLAGS=-O3 #-std=c++11
+	CXXFLAGS+=-xCORE_AVX2
+	#CXXFLAGS+=-xMIC_AVX512
+#	LINKFLAGS=-qopenmp -dynamic
+    EXE = ${EXE_NAME}.host
+    KOKKOS_ARCH = "knl"
 endif 
 
 ifeq ($(CXX),g++)
-	CXXFLAGS= -g -O3 -std=c++11 -fopenmp #-foffload="-lm" -foffload=nvptx-none
-	LINKFLAGS=-fopenmp #-foffload="-lm" -foffload=nvptx-none
+	CXXFLAGS=-O3 #-std=c++11
+    EXE = ${EXE_NAME}.host
+    KOKKOS_ARCH = "power8"
 endif 
 
-ifeq ($(CXX),icc)
-    CXXFLAGS=-O3 -std=c++11 -qopenmp -qopt-report=5
-    CXXFLAGS+=-qopenmp-offload=host #For offloading
-    CXXFLAGS+=-I ~/CUDA/include
-    #CXXFLAGS+=-qno-openmp-offload #For disabling offloading
-    #CXXFLAGS+=-xCORE-AVX2
-    CXXFLAGS+=-xMIC-AVX512
-    LINKFLAGS=-qopenmp -qopenmp-offload=host#-qopenmp-offload=mic
-    #LINKFLAGS+=-dynamic #Dynamic flag gives runtime issues with OMP4.5
+ifeq ($(CXX),xlc++_r)
+	CXXFLAGS=-qsmp=noauto:omp
+    EXE = ${EXE_NAME}.host
+#	LINKFLAGS=-qsmp=noauto:omp 
+    KOKKOS_ARCH = "power8"
 endif 
 
-ifeq ($(CXX),clang++)
-	CXXFLAGS=-O3 -std=gnu++11 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${OLCF_CUDA_ROOT}
-	LINKFLAGS=-fopenmp -fopenmp-targets=nvptx64-nvidia-cuda --cuda-path=${OLCF_CUDA_ROOT}
-endif 
+LINK = ${CXX}
+LINKFLAGS = 
+
+DEPFLAGS = -M
 
 OBJ = $(SRC:.cpp=.o)
+LIB =
 
-$(EXE): $(OBJ) 
-	$(CXX) $(OBJ) -o $(EXE) $(LINKFLAGS)
+include $(KOKKOS_PATH)/Makefile.kokkos
 
-$(OBJ): $(SRC) 
-	$(CXX) -c $(SRC) $(CXXFLAGS)
+build: $(EXE)
 
-clean: 
-	rm -f $(OBJ) $(EXE)
+$(EXE): $(OBJ) $(KOKKOS_LINK_DEPENDS)
+	$(LINK) $(KOKKOS_LDFLAGS) $(LINKFLAGS) $(EXTRA_PATH) $(OBJ) $(KOKKOS_LIBS) $(LIB) -o $(EXE)
 
+clean: kokkos-clean
+	rm -f *.o *.cuda *.host
+
+# Compilation rules
+
+%.o:%.cpp $(KOKKOS_CPP_DEPENDS)
+	$(CXX) $(KOKKOS_CPPFLAGS) $(KOKKOS_CXXFLAGS) $(CXXFLAGS) $(EXTRA_INC) -c $<
+
+test: $(EXE)
+	./$(EXE)

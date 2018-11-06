@@ -10,12 +10,20 @@
 #include <ctime>
 #include <stdio.h>
 #include <sys/time.h>
+#include <Kokkos_Core.hpp>
+#include <Kokkos_Complex.hpp>
+
+#define CUDASPACE 0
+#define OPENMPSPACE 1
+#define CUDAUVM 0
+#define SERIAL 0
+#define THREADS 0
+
 using namespace std;
 
 template<class type>
 
 class CustomComplex {
-#pragma omp declare target 
     private : 
     type x;
     type y;
@@ -178,68 +186,135 @@ class CustomComplex {
     }
 
     template<class T>
-     friend inline void CustomComplex_equals(const CustomComplex<T>* src, CustomComplex<T>* dest) ;
+     friend void CustomComplex_equals(const CustomComplex<T>* src, CustomComplex<T>* dest) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) ;
+     friend CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>& src) ;
+     friend CustomComplex<T> CustomComplex_conj(const CustomComplex<T>& src) ;
 
     template<class T>
-     friend inline double CustomComplex_abs(const CustomComplex<T>& src) ;
+     friend double CustomComplex_abs(const CustomComplex<T>& src) ;
 
     template<class T>
-     friend inline double CustomComplex_real( const CustomComplex<T>* src) ;
+     friend double CustomComplex_real( const CustomComplex<T>* src) ;
 
     template<class T>
-     friend inline double CustomComplex_imag( const CustomComplex<T>* src) ;
+     friend double CustomComplex_imag( const CustomComplex<T>* src) ;
 
     template<class T>
-     friend inline double CustomComplex_real( const CustomComplex<T>& src) ;
+     friend double CustomComplex_real( const CustomComplex<T>& src) ;
 
     template<class T>
-     friend inline double CustomComplex_imag( const CustomComplex<T>& src) ;
+     friend double CustomComplex_imag( const CustomComplex<T>& src) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T* b) ;
+     friend CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T* b) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T b) ;
+     friend CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T b) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
+     friend CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* src, T* b) ;
+     friend CustomComplex<T> CustomComplex_product(const CustomComplex<T> a, const CustomComplex<T> b) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
+     friend CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* src, T* b) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_minus(const T* a, const CustomComplex<T>* src) ;
+     friend CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
+     friend CustomComplex<T> CustomComplex_minus(const T* a, const CustomComplex<T>* src) ;
 
     template<class T>
-     friend inline CustomComplex<T> CustomComplex_plus(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
+     friend CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
 
     template<class T>
-     friend inline void CustomComplex_plusEquals(CustomComplex<T>* a, const CustomComplex<T>* b) ;
+     friend CustomComplex<T> CustomComplex_plus(const CustomComplex<T>* a, const CustomComplex<T>* b) ;
 
     template<class T>
-     friend inline void CustomComplex_minusEquals(CustomComplex<T>* a, const CustomComplex<T>* b) ;
-#pragma omp end declare target 
+     friend void CustomComplex_plusEquals(CustomComplex<T>* a, const CustomComplex<T>* b) ;
+
+    template<class T>
+     friend void CustomComplex_minusEquals(CustomComplex<T>* a, const CustomComplex<T>* b) ;
 };
 
+//Structs for customized reduction inside kokkos constructs
+struct gppRednStruct 
+{
+    double ach_re[3];
+    double ach_im[3];
+KOKKOS_INLINE_FUNCTION
+    void operator+=(gppRednStruct const& other) 
+    {
+        for (int i = 0; i < 3; ++i) 
+        {
+            ach_re[i] += other.ach_re[i];
+            ach_im[i] += other.ach_im[i];
+        }
+    }
+KOKKOS_INLINE_FUNCTION
+    void operator+=(gppRednStruct const volatile& other) volatile 
+    {
+        for (int i = 0; i < 3; ++i) 
+        {
+            ach_re[i] += other.ach_re[i];
+            ach_im[i] += other.ach_im[i];
+        }
+    }
+};
+
+#if OPENMPSPACE
+        typedef Kokkos::OpenMP   ExecSpace;
+        typedef Kokkos::OpenMP        MemSpace;
+        typedef Kokkos::LayoutRight  Layout;
+#endif
+
+#if CUDASPACE
+        typedef Kokkos::Cuda     ExecSpace;
+        typedef Kokkos::CudaSpace     MemSpace;
+        typedef Kokkos::LayoutLeft   Layout;
+#endif
+
+#if CUDAUVM
+        typedef Kokkos::Cuda     ExecSpace;
+        typedef Kokkos::CudaUVMSpace  MemSpace;
+        typedef Kokkos::LayoutLeft   Layout;
+#endif
+
+#if SERIAL
+        typedef Kokkos::Serial   ExecSpace;
+        typedef Kokkos::HostSpace     MemSpace;
+#endif
+
+#if THREADS
+        typedef Kokkos::Threads  ExecSpace;
+        typedef Kokkos::HostSpace     MemSpace;
+#endif
+
+typedef Kokkos::RangePolicy<ExecSpace>  range_policy;
+typedef Kokkos::TeamPolicy<> team_policy;
+typedef Kokkos::TeamPolicy<>::member_type member_type;
+
+typedef Kokkos::View<CustomComplex<double>, Layout, MemSpace>   ViewScalarTypeComplex;
+typedef Kokkos::View<CustomComplex<double>*, Layout, MemSpace>   ViewVectorTypeComplex;
+typedef Kokkos::View<CustomComplex<double>**, Layout, MemSpace>  ViewMatrixTypeComplex;
+
+typedef Kokkos::View<int*, Layout, MemSpace>   ViewVectorTypeInt;
+typedef Kokkos::View<double*, Layout, MemSpace>   ViewVectorTypeDouble;
+
+typedef Kokkos::View<int, Layout, MemSpace>   ViewScalarTypeInt;
+typedef Kokkos::View<double, Layout, MemSpace>   ViewScalarTypeDouble;
 
 /* Return the conjugate of a complex number 
 flop
 */
-#pragma omp declare target 
 template<class T>
-inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) {
+CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) {
     T re_this = src->x;
     T im_this = -1 * src->y;
     CustomComplex<T> result(re_this, im_this);
@@ -247,7 +322,7 @@ inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>* src) {
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>& src) {
+CustomComplex<T> CustomComplex_conj(const CustomComplex<T>& src) {
     T re_this = src.x;
     T im_this = -1 * src.y;
     CustomComplex<T> result(re_this, im_this);
@@ -258,7 +333,7 @@ inline CustomComplex<T> CustomComplex_conj(const CustomComplex<T>& src) {
  * Return the absolute of a complex number 
  */
 template<class T>
-inline double CustomComplex_abs(const CustomComplex<T>& src) {
+double CustomComplex_abs(const CustomComplex<T>& src) {
     T re_this = src.x * src.x;
     T im_this = src.y * src.y;
 
@@ -270,12 +345,12 @@ inline double CustomComplex_abs(const CustomComplex<T>& src) {
  * Return the real part of a complex number 
  */
 template<class T>
-inline double CustomComplex_real( const CustomComplex<T>* src) {
+double CustomComplex_real( const CustomComplex<T>* src) {
     return src->x;
 }
 
 template<class T>
-inline double CustomComplex_real( const CustomComplex<T>& src) {
+double CustomComplex_real( const CustomComplex<T>& src) {
     return src.x;
 }
 
@@ -283,24 +358,24 @@ inline double CustomComplex_real( const CustomComplex<T>& src) {
  * Return the imaginary part of a complex number 
  */
 template<class T>
-inline double CustomComplex_imag( const CustomComplex<T>* src) {
+double CustomComplex_imag( const CustomComplex<T>* src) {
     return src->y;
 }
 
 template<class T>
-inline double CustomComplex_imag( const CustomComplex<T>& src) {
+double CustomComplex_imag( const CustomComplex<T>& src) {
     return src.y;
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T* b) {
+CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T* b) {
    T re_this = src->x * (*b);
    T im_this = src->y * (*b);
    return (CustomComplex<T>(re_this, im_this));
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* src, T* b) {
+CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* src, T* b) {
    T re_this = src->x / (*b);
    T im_this = src->y / (*b);
    return (CustomComplex<T>(re_this, im_this));
@@ -308,7 +383,7 @@ inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* src, T* b) 
 
 
 template<class T>
-inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* a, const CustomComplex<T>* b) {
+CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* a, const CustomComplex<T>* b) {
    CustomComplex<T> b_conj = CustomComplex_conj(b);
    CustomComplex<T> numerator = CustomComplex_product(a , &b_conj);
    CustomComplex<T> denominator = CustomComplex_product(b , &b_conj);
@@ -321,14 +396,14 @@ inline CustomComplex<T> CustomComplex_divide(const CustomComplex<T>* a, const Cu
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T b) {
+CustomComplex<T> CustomComplex_product(const CustomComplex<T>* src, T b) {
    T re_this = src->x * b;
    T im_this = src->y * b;
    return (CustomComplex<T>(re_this, im_this));
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
+CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
     T x_this = a->x * b->x - a->y*b->y ;
     T y_this = a->x * b->y + a->y*b->x ;
     CustomComplex<T> result(x_this, y_this);
@@ -336,36 +411,44 @@ inline CustomComplex<T> CustomComplex_product(const CustomComplex<T>* a, const C
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
+CustomComplex<T> CustomComplex_product(const CustomComplex<T> a, const CustomComplex<T> b){ 
+    T x_this = a.x * b.x - a.y*b.y ;
+    T y_this = a.x * b.y + a.y*b.x ;
+    CustomComplex<T> result(x_this, y_this);
+    return (result);
+}
+
+template<class T>
+CustomComplex<T> CustomComplex_minus(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
         CustomComplex<T> result(a->x - b->x, a->y - b->y);
         return result;
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_minus(const T* a, const CustomComplex<T>* src) {
+CustomComplex<T> CustomComplex_minus(const T* a, const CustomComplex<T>* src) {
         CustomComplex<T> result(*a - src->x, 0 - src->y);
         return result;
 }
 
 template<class T>
-inline CustomComplex<T> CustomComplex_plus(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
+CustomComplex<T> CustomComplex_plus(const CustomComplex<T>* a, const CustomComplex<T>* b){ 
         CustomComplex<T> result(a->x + b->x, a->y + b->y);
         return result;
 }
 
 template<class T>
-inline void CustomComplex_equals(const CustomComplex<T>* src, CustomComplex<T>* dest) {
+void CustomComplex_equals(const CustomComplex<T>* src, CustomComplex<T>* dest) {
     *dest = CustomComplex<T>(src->x, src->y);
 }
 
 template<class T>
-inline void CustomComplex_plusEquals(CustomComplex<T>* a, const CustomComplex<T>* b){ 
+void CustomComplex_plusEquals(CustomComplex<T>* a, const CustomComplex<T>* b){ 
         a->x += b->x ;
         a->y += b->y ;
 }
 
 template<class T>
-inline void CustomComplex_minusEquals(CustomComplex<T>* a, const CustomComplex<T>* b){ 
+void CustomComplex_minusEquals(CustomComplex<T>* a, const CustomComplex<T>* b){ 
         a->x -= b->x ;
         a->y -= b->y ;
 }
@@ -414,6 +497,5 @@ void achDtemp_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, in
 
 void achDtemp_cor_Kernel(int number_bands, int nvband, int nfreqeval, int ncouls, int ngpown, int nFreq, double freqevalmin, double freqevalstep, double *ekq, double *dFreqGrid, int *inv_igp_index, int *indinv, CustomComplex<double> *aqsmtemp, CustomComplex<double> *aqsntemp, double *vcoul, CustomComplex<double> *I_epsR_array, CustomComplex<double> *I_epsA_array, double *achDtemp_cor_re, double *achDtemp_cor_im, double &elapsedTimeKernel);
 
-#pragma omp end declare target 
 #endif
 

@@ -2,6 +2,7 @@ KOKKOS_PATH = ${HOME}/Kokkos/kokkos
 KOKKOS_DEVICES = "Cuda"
 EXE_NAME = "gppKerKokkosCuda"
 
+#SRC = gppKerKokkosCuda.cpp
 SRC = gppKerKokkosCuda.cpp
 
 default: build

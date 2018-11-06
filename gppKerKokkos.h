@@ -11,8 +11,8 @@
 using namespace std;
 
 
-#define CUDASPACE 1
-#define OPENMPSPACE 0
+#define CUDASPACE 0
+#define OPENMPSPACE 1
 #define CUDAUVM 0
 #define SERIAL 0
 #define THREADS 0
@@ -85,6 +85,30 @@ KOKKOS_INLINE_FUNCTION
         {
             achtemp_re[i] += other.achtemp_re[i];
             achtemp_im[i] += other.achtemp_im[i];
+        }
+    }
+};
+
+struct gppRednStruct 
+{
+    double ach_re[3];
+    double ach_im[3];
+KOKKOS_INLINE_FUNCTION
+    void operator+=(gppRednStruct const& other) 
+    {
+        for (int i = 0; i < 3; ++i) 
+        {
+            ach_re[i] += other.ach_re[i];
+            ach_im[i] += other.ach_im[i];
+        }
+    }
+KOKKOS_INLINE_FUNCTION
+    void operator+=(gppRednStruct const volatile& other) volatile 
+    {
+        for (int i = 0; i < 3; ++i) 
+        {
+            ach_re[i] += other.ach_re[i];
+            ach_im[i] += other.ach_im[i];
         }
     }
 };
