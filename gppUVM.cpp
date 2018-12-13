@@ -1,4 +1,4 @@
-#include "./CustomComplex.h"
+#include "./CustomComplex_back.h"
 //#include "./cudaAlloc.h"
 
 #define nstart 0
@@ -137,47 +137,23 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
     double ach_re0 = 0.00, ach_re1 = 0.00, ach_re2 = 0.00, \
         ach_im0 = 0.00, ach_im1 = 0.00, ach_im2 = 0.00;
 
-#if __OMPOFFLOAD__ 
-#pragma omp target enter data map(alloc:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
-    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
-#pragma omp target update to(aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
-    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
-
     gettimeofday(&startKernelTimer, NULL);
-
-#if __reductionVersion__
-#pragma omp target teams distribute collapse(2) \
-    map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
-    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
-    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)\
-    map(tofrom:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)//\
-    num_teams(number_bands) thread_limit(32)
-#else
-#pragma omp target teams distribute parallel for collapse(2)\
-    map(to:aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
-    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])\
-    map(tofrom:achtemp_re[nstart:nend], achtemp_im[nstart:nend])//\
-    num_teams(number_bands) thread_limit(128)
-#endif
-#else
-    gettimeofday(&startKernelTimer, NULL);
-#pragma omp parallel for collapse(2) \
-    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
-#endif
-
-    for(int my_igp=0; my_igp<ngpown; ++my_igp)
+    gppRednStruct achRednStruct;
+    for(int iw = nstart; iw < nend; ++iw)
     {
-        for(int n1 = 0; n1<number_bands; ++n1) 
+        achRednStruct.ach_re[iw] = 0.00;
+        achRednStruct.ach_im[iw] = 0.00;
+    }
+
+    for(int n1 = 0; n1<number_bands; ++n1) 
+    {
+        for(int my_igp=0; my_igp<ngpown; ++my_igp)
         {
             int indigp = inv_igp_index[my_igp];
             int igp = indinv[indigp];
             double achtemp_re_loc[nend-nstart], achtemp_im_loc[nend-nstart];
             for(int iw = nstart; iw < nend; ++iw) {achtemp_re_loc[iw] = 0.00; achtemp_im_loc[iw] = 0.00;}
 
-#if __reductionVersion__ && __OMPOFFLOAD__
-#pragma omp parallel for\
-    reduction(+:ach_re0, ach_re1, ach_re2, ach_im0, ach_im1, ach_im2)
-#endif
             for(int ig = 0; ig<ncouls; ++ig)
             {
                 for(int iw = nstart; iw < nend; ++iw)
@@ -193,51 +169,25 @@ void noflagOCC_solver(int number_bands, int ngpown, int ncouls, int *inv_igp_ind
                     CustomComplex<double> sch_store2 = CustomComplex_product(&delw, &I_eps_array[my_igp*ncouls +ig]);
                     CustomComplex<double> sch_store3 = CustomComplex_product(&sch_store1, &sch_store2);
                     CustomComplex<double> sch_array = CustomComplex_product(&sch_store3, 0.5*vcoul[igp]);
-#if __reductionVersion__
-                    achtemp_re_loc[iw] = CustomComplex_real(&sch_array);
-                    achtemp_im_loc[iw] = CustomComplex_imag(&sch_array);
-#else
                     achtemp_re_loc[iw] += CustomComplex_real(&sch_array);
                     achtemp_im_loc[iw] += CustomComplex_imag(&sch_array);
-#endif
                 }
-#if __reductionVersion__
-                ach_re0 += achtemp_re_loc[0];
-                ach_re1 += achtemp_re_loc[1];
-                ach_re2 += achtemp_re_loc[2];
-                ach_im0 += achtemp_im_loc[0];
-                ach_im1 += achtemp_im_loc[1];
-                ach_im2 += achtemp_im_loc[2];
-#endif
             }
-#if !__reductionVersion__
             for(int iw = nstart; iw < nend; ++iw)
             {
-#pragma omp atomic
-                achtemp_re[iw] += achtemp_re_loc[iw];
-#pragma omp atomic
-                achtemp_im[iw] += achtemp_im_loc[iw];
+                achRednStruct.ach_re[iw] += achtemp_re_loc[iw];
+                achRednStruct.ach_im[iw] += achtemp_im_loc[iw];
             }
-#endif
         } //ngpown
     } //number_bands
 
     gettimeofday(&endKernelTimer, NULL);
     elapsedKernelTimer = (endKernelTimer.tv_sec - startKernelTimer.tv_sec) +1e-6*(endKernelTimer.tv_usec - startKernelTimer.tv_usec);
-
-#if __OMPOFFLOAD__
-#pragma omp target exit data map(delete: aqsmtemp[0:number_bands*ncouls], vcoul[0:ncouls], inv_igp_index[0:ngpown], indinv[0:ncouls+1], \
-    aqsntemp[0:number_bands*ncouls], I_eps_array[0:ngpown*ncouls], wx_array[nstart:nend], wtilde_array[0:ngpown*ncouls])
-#endif
-
-#if __reductionVersion__
-    achtemp_re[0] = ach_re0;
-    achtemp_re[1] = ach_re1;
-    achtemp_re[2] = ach_re2;
-    achtemp_im[0] = ach_im0;
-    achtemp_im[1] = ach_im1;
-    achtemp_im[2] = ach_im2;
-#endif
+    for(int iw = nstart; iw < nend; ++iw)
+    {
+        achtemp_re[iw] = achRednStruct.ach_re[iw] ;
+        achtemp_im[iw] = achRednStruct.ach_im[iw] ;
+    }
 }
 
 int main(int argc, char** argv)
@@ -290,26 +240,6 @@ int main(int argc, char** argv)
             numThreads = omp_get_num_threads();
     }
     std::cout << "Number of OpenMP Threads = " << numThreads << endl;
-
-#if __OMPOFFLOAD__
-#pragma omp target map(tofrom: numTeams, numThreads)
-#pragma omp teams shared(numTeams) private(tid)
-    {
-        tid = omp_get_team_num();
-        if(tid == 0)
-        {
-            numTeams = omp_get_num_teams();
-#pragma omp parallel 
-            {
-                int ttid = omp_get_thread_num();
-                if(ttid == 0)
-                    numThreads = omp_get_num_threads();
-            }
-        }
-    }
-    std::cout << "Number of OpenMP Teams = " << numTeams << std::endl;
-    std::cout << "Number of OpenMP DEVICE Threads = " << numThreads << std::endl;
-#endif
 
     //Printing out the params passed.
     std::cout << "Sizeof(CustomComplex<double> = " << sizeof(CustomComplex<double>) << " bytes" << std::endl;
